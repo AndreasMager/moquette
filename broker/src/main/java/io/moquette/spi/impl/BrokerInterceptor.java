@@ -47,7 +47,8 @@ final class BrokerInterceptor implements Interceptor {
     private final ExecutorService executor;
 
     private BrokerInterceptor(int poolSize, List<InterceptHandler> handlers) {
-        LOG.info("Initializing broker interceptor. InterceptorIds={}", getInterceptorIds(handlers));
+        LOG.info("Initializing broker interceptor. Poolsize={} InterceptorIds={}", poolSize,
+                getInterceptorIds(handlers));
         this.handlers = new HashMap<>();
         for (Class<?> messageType : InterceptHandler.ALL_MESSAGE_TYPES) {
             this.handlers.put(messageType, new CopyOnWriteArrayList<InterceptHandler>());

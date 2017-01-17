@@ -112,7 +112,7 @@ public abstract class AbstractStoreTest {
 
     @Test
     public void testDropMessagesInSessionCleanAllNotRetainedStoredMessages() {
-        m_sessionsStore.createNewSession("TestClient", true);
+        m_sessionsStore.createNewSession(TEST_CLIENT, true);
         IMessagesStore.StoredMessage publishToStore = new IMessagesStore.StoredMessage(
                 "Hello".getBytes(),
                 MqttQoS.EXACTLY_ONCE,
@@ -122,7 +122,7 @@ public abstract class AbstractStoreTest {
         UUID guid = m_messagesStore.storePublishForFuture(publishToStore);
 
         // Exercise
-        //m_messagesStore.dropMessagesInSession("TestClient");
+        m_messagesStore.dropInFlightMessagesInSession(Arrays.asList(guid));
 
         // Verify the message store for session is empty.
         IMessagesStore.StoredMessage storedPublish = m_messagesStore.getMessageByGuid(guid);
@@ -131,7 +131,7 @@ public abstract class AbstractStoreTest {
 
     @Test
     public void testDropMessagesInSessionDoesntCleanAnyRetainedStoredMessages() {
-        m_sessionsStore.createNewSession("TestClient", true);
+        m_sessionsStore.createNewSession(TEST_CLIENT, true);
 
         List<Subscription> matcher = Arrays.asList(new Subscription("", new Topic("id1/topic"), MqttQoS.AT_LEAST_ONCE));
 
@@ -146,7 +146,7 @@ public abstract class AbstractStoreTest {
                 .isNotEmpty());
 
         // Exercise
-        //m_messagesStore.dropMessagesInSession("TestClient");
+        m_messagesStore.dropInFlightMessagesInSession(m_sessionsStore.pendingAck("TestClient"));
 
         await().until(() ->
             assertThat(m_messagesStore.searchMatching(matcher))
