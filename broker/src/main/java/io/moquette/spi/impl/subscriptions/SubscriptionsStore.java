@@ -22,7 +22,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.text.ParseException;
 import java.util.*;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -244,7 +243,7 @@ public class SubscriptionsStore {
             return Collections.emptyList();
         }
 
-        Queue<Token> tokenQueue = new LinkedBlockingDeque<>(tokens);
+        Queue<Token> tokenQueue = new ArrayDeque<>(tokens);
         List<ClientTopicCouple> matchingSubs = new ArrayList<>();
         subscriptions.get().matches(tokenQueue, matchingSubs);
 
