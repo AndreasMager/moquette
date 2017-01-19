@@ -244,8 +244,7 @@ public class SubscriptionsStore {
         }
 
         Queue<Token> tokenQueue = new ArrayDeque<>(tokens);
-        List<ClientTopicCouple> matchingSubs = new ArrayList<>();
-        subscriptions.get().matches(tokenQueue, matchingSubs);
+        List<ClientTopicCouple> matchingSubs = subscriptions.get().matches(tokenQueue);
 
         // remove the overlapping subscriptions, selecting ones with greatest qos
         Map<String, Subscription> subsForClient = new HashMap<>();
