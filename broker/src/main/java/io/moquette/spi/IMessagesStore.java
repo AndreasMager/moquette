@@ -21,8 +21,8 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import java.io.Serializable;
-import java.nio.ByteBuffer;
 import java.util.Collection;
+import java.util.UUID;
 
 /**
  * Defines the SPI to be implemented by a StorageService that handle persistence of messages
@@ -37,7 +37,7 @@ public interface IMessagesStore {
         final String m_topic;
         private boolean m_retained;
         private String m_clientID;
-        private MessageGUID m_guid;
+        private UUID m_guid;
 
         public StoredMessage(byte[] message, MqttQoS qos, String topic) {
             m_qos = qos;
@@ -53,11 +53,11 @@ public interface IMessagesStore {
             return m_topic;
         }
 
-        public void setGuid(MessageGUID guid) {
+        public void setGuid(UUID guid) {
             this.m_guid = guid;
         }
 
-        public MessageGUID getGuid() {
+        public UUID getGuid() {
             return m_guid;
         }
 

@@ -35,6 +35,8 @@ import static io.moquette.spi.impl.Utils.messageId;
 import static io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader.from;
 import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 
+import java.util.UUID;
+
 class Qos2PublishHandler extends QosPublishHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(Qos2PublishHandler.class);
