@@ -22,7 +22,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 class TreeNode {
 
-    Token m_token;
+    String m_token;
     List<TreeNode> m_children = new ArrayList<>();
     Set<ClientTopicCouple> m_subscriptions = new HashSet<>();
 
@@ -31,11 +31,11 @@ class TreeNode {
     TreeNode() {
     }
 
-    Token getToken() {
+    String getToken() {
         return m_token;
     }
 
-    void setToken(Token topic) {
+    void setToken(String topic) {
         this.m_token = topic;
     }
 
@@ -64,7 +64,7 @@ class TreeNode {
     /**
      * Search for children that has the specified token, if not found return null;
      */
-    TreeNode childWithToken(Token token) {
+    TreeNode childWithToken(String token) {
         for (TreeNode child : m_children) {
             if (child.getToken().equals(token)) {
                 return child;
@@ -90,15 +90,15 @@ class TreeNode {
     }
 
     // TODO smell a query method that return the result modifing the parameter (matchingSubs)
-    void matches(Queue<Token> tokens, List<ClientTopicCouple> matchingSubs) {
-        Token t = tokens.poll();
+    void matches(Queue<String> tokens, List<ClientTopicCouple> matchingSubs) {
+        String t = tokens.poll();
 
         // check if t is null <=> tokens finished
         if (t == null) {
             matchingSubs.addAll(m_subscriptions);
             // check if it has got a MULTI child and add its subscriptions
             for (TreeNode n : m_children) {
-                if (n.getToken() == Token.MULTI || n.getToken() == Token.SINGLE) {
+                if (n.getToken() == Tokens.MULTI || n.getToken() == Tokens.SINGLE) {
                     matchingSubs.addAll(n.subscriptions());
                 }
             }
@@ -107,15 +107,15 @@ class TreeNode {
         }
 
         // we are on MULTI, than add subscriptions and return
-        if (m_token == Token.MULTI) {
+        if (m_token == Tokens.MULTI) {
             matchingSubs.addAll(m_subscriptions);
             return;
         }
 
         for (TreeNode n : m_children) {
-            if (n.getToken().match(t)) {
-                // Create a copy of token, else if navigate 2 sibling it
-                // consumes 2 elements on the queue instead of one
+            if (Tokens.match(n.getToken(), t)) {
+                //Create a copy of token, else if navigate 2 sibling it
+                //consumes 2 elements on the queue instead of one
                 n.matches(new LinkedBlockingQueue<>(tokens), matchingSubs);
                 // TODO don't create a copy n.matches(tokens, matchingSubs);
             }

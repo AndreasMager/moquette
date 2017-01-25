@@ -21,7 +21,6 @@ import io.moquette.spi.ISubscriptionsStore.ClientTopicCouple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.*;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -131,7 +130,7 @@ public class SubscriptionsDirectory implements ISubscriptionsDirectory {
         final TreeNode newRoot = oldRoot.copy();
         TreeNode parent = newRoot;
         TreeNode current = newRoot;
-        for (Token token : topic.getTokens()) {
+        for (String token : topic.getTokens()) {
             TreeNode matchingChildren;
 
             // check if a children with the same token already exists
@@ -198,7 +197,29 @@ public class SubscriptionsDirectory implements ISubscriptionsDirectory {
      */
     @Override
     public List<Subscription> matches(Topic topic) {
-        Queue<Token> tokenQueue = new LinkedBlockingDeque<>(topic.getTokens());
+        Queue<String> tokenQueue = new ArrayDeque<>(topic.getTokens());
+        List<ClientTopicCouple> matchingSubs = new ArrayList<>();
+        subscriptions.get().matches(tokenQueue, matchingSubs);
+
+        // remove the overlapping subscriptions, selecting ones with greatest qos
+        Map<String, Subscription> subsForClient = new HashMap<>();
+        for (ClientTopicCouple matchingCouple : matchingSubs) {
+            Subscription existingSub = subsForClient.get(matchingCouple.clientID);
+            Subscription sub = this.subscriptionsStore.getSubscription(matchingCouple);
+            if (sub == null) {
+                // if the m_sessionStore hasn't the sub because the client disconnected
+                continue;
+            }
+            // update the selected subscriptions if not present or if has a greater qos
+            if (existingSub == null || existingSub.getRequestedQos().value() < sub.getRequestedQos().value()) {
+                subsForClient.put(matchingCouple.clientID, sub);
+            }
+        }
+        return new ArrayList<>(subsForClient.values());
+    }
+
+    public List<Subscription> matches2(Topic topic) {
+        Queue<String> tokenQueue = new ArrayDeque<>(topic.getTokens());
         List<ClientTopicCouple> matchingSubs = new ArrayList<>();
         subscriptions.get().matches(tokenQueue, matchingSubs);
 

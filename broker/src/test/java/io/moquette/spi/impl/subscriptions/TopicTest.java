@@ -27,16 +27,16 @@ public class TopicTest {
     public void testParseTopic() {
         assertThat(new Topic("finance/stock/ibm")).containsToken("finance", "stock", "ibm");
 
-        assertThat(new Topic("/finance/stock/ibm")).containsToken(Token.EMPTY, "finance", "stock", "ibm");
+        assertThat(new Topic("/finance/stock/ibm")).containsToken(Tokens.EMPTY, "finance", "stock", "ibm");
 
-        assertThat(new Topic("/")).containsToken(Token.EMPTY, Token.EMPTY);
+        assertThat(new Topic("/")).containsToken(Tokens.EMPTY, Tokens.EMPTY);
     }
 
     @Test
     public void testParseTopicMultiValid() {
-        assertThat(new Topic("finance/stock/#")).containsToken("finance", "stock", Token.MULTI);
+        assertThat(new Topic("finance/stock/#")).containsToken("finance", "stock", Tokens.MULTI);
 
-        assertThat(new Topic("#")).containsToken(Token.MULTI);
+        assertThat(new Topic("#")).containsToken(Tokens.MULTI);
     }
 
     @Test
@@ -58,11 +58,11 @@ public class TopicTest {
 
     @Test
     public void testParseTopicSingleValid() {
-        assertThat(new Topic("finance/stock/+")).containsToken("finance", "stock", Token.SINGLE);
+        assertThat(new Topic("finance/stock/+")).containsToken("finance", "stock", Tokens.SINGLE);
 
-        assertThat(new Topic("+")).containsToken(Token.SINGLE);
+        assertThat(new Topic("+")).containsToken(Tokens.SINGLE);
 
-        assertThat(new Topic("finance/+/ibm")).containsToken("finance", Token.SINGLE, "ibm");
+        assertThat(new Topic("finance/+/ibm")).containsToken("finance", Tokens.SINGLE, "ibm");
     }
 
     @Test
@@ -151,14 +151,14 @@ public class TopicTest {
             return myself;
         }
 
-        private Token[] asArray(Object... l) {
-            Token[] tokens = new Token[l.length];
+        private String[] asArray(Object... l) {
+            String[] tokens = new String[l.length];
             for (int i = 0; i < l.length; i++) {
                 Object o = l[i];
-                if (o instanceof Token) {
-                    tokens[i] = (Token) o;
+                if (o instanceof String) {
+                    tokens[i] = (String) o;
                 } else {
-                    tokens[i] = new Token(o.toString());
+                    tokens[i] = new String(o.toString());
                 }
             }
 

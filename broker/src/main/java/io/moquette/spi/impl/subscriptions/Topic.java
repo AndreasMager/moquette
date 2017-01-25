@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +34,7 @@ public class Topic implements Serializable {
 
     private final String topic;
 
-    private transient List<Token> tokens;
+    private transient List<String> tokens;
 
     private transient boolean valid;
 
@@ -50,14 +49,13 @@ public class Topic implements Serializable {
         this.topic = topic;
     }
 
-    Topic(List<Token> tokens) {
+    Topic(List<String> tokens) {
         this.tokens = tokens;
-        List<String> strTokens = tokens.stream().map(Token::toString).collect(Collectors.toList());
-        this.topic = String.join("/", strTokens);
+        this.topic = String.join("/", tokens);
         this.valid = true;
     }
 
-    public List<Token> getTokens() {
+    public List<String> getTokens() {
         if (tokens == null) {
             try {
                 tokens = parseTopic(topic);
@@ -71,12 +69,12 @@ public class Topic implements Serializable {
         return tokens;
     }
 
-    private List<Token> parseTopic(String topic) throws ParseException {
-        List<Token> res = new ArrayList<>();
+    private List<String> parseTopic(String topic) throws ParseException {
+        List<String> res = new ArrayList<>();
         String[] splitted = topic.split("/");
 
         if (splitted.length == 0) {
-            res.add(Token.EMPTY);
+            res.add(Tokens.EMPTY);
         }
 
         if (topic.endsWith("/")) {
@@ -94,7 +92,7 @@ public class Topic implements Serializable {
                 // throw new ParseException("Bad format of topic, expetec topic name between
                 // separators", i);
                 // }
-                res.add(Token.EMPTY);
+                res.add(Tokens.EMPTY);
             } else if (s.equals("#")) {
                 // check that multi is the last symbol
                 if (i != splitted.length - 1) {
@@ -102,23 +100,23 @@ public class Topic implements Serializable {
                             "Bad format of topic, the multi symbol (#) has to be the last one after a separator",
                             i);
                 }
-                res.add(Token.MULTI);
+                res.add(Tokens.MULTI);
             } else if (s.contains("#")) {
                 throw new ParseException("Bad format of topic, invalid subtopic name: " + s, i);
             } else if (s.equals("+")) {
-                res.add(Token.SINGLE);
+                res.add(Tokens.SINGLE);
             } else if (s.contains("+")) {
                 throw new ParseException("Bad format of topic, invalid subtopic name: " + s, i);
             } else {
-                res.add(new Token(s));
+                res.add(s);
             }
         }
 
         return res;
     }
 
-    public Token headToken() {
-        final List<Token> tokens = getTokens();
+    public String headToken() {
+        final List<String> tokens = getTokens();
         if (tokens.isEmpty()) {
             //TODO UGLY use Optional
             return null;
@@ -127,7 +125,7 @@ public class Topic implements Serializable {
     }
 
     public boolean isEmpty() {
-        final List<Token> tokens = getTokens();
+        final List<String> tokens = getTokens();
         return tokens == null || tokens.isEmpty();
     }
 
@@ -135,11 +133,11 @@ public class Topic implements Serializable {
      * @return a new Topic corresponding to this less than the head token
      * */
     public Topic exceptHeadToken() {
-        List<Token> tokens = getTokens();
+        List<String> tokens = getTokens();
         if (tokens.isEmpty()) {
             return new Topic(Collections.emptyList());
         }
-        List<Token> tokensCopy = new ArrayList<>(tokens);
+        List<String> tokensCopy = new ArrayList<>(tokens);
         tokensCopy.remove(0);
         return new Topic(tokensCopy);
     }
@@ -160,24 +158,24 @@ public class Topic implements Serializable {
      */
     // TODO reimplement with iterators or with queues
     public boolean match(Topic subscriptionTopic) {
-        List<Token> msgTokens = getTokens();
-        List<Token> subscriptionTokens = subscriptionTopic.getTokens();
+        List<String> msgTokens = getTokens();
+        List<String> subscriptionTokens = subscriptionTopic.getTokens();
         int i = 0;
         for (; i < subscriptionTokens.size(); i++) {
-            Token subToken = subscriptionTokens.get(i);
-            if (subToken != Token.MULTI && subToken != Token.SINGLE) {
+            String subToken = subscriptionTokens.get(i);
+            if (subToken != Tokens.MULTI && subToken != Tokens.SINGLE) {
                 if (i >= msgTokens.size()) {
                     return false;
                 }
-                Token msgToken = msgTokens.get(i);
+                String msgToken = msgTokens.get(i);
                 if (!msgToken.equals(subToken)) {
                     return false;
                 }
             } else {
-                if (subToken == Token.MULTI) {
+                if (subToken == Tokens.MULTI) {
                     return true;
                 }
-                if (subToken == Token.SINGLE) {
+                if (subToken == Tokens.SINGLE) {
                     // skip a step forward
                 }
             }
