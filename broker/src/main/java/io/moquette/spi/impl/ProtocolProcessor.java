@@ -802,9 +802,7 @@ public class ProtocolProcessor {
         channel.writeAndFlush(ackMessage);
 
         // fire the persisted messages in session
-        for (Subscription subscription : newSubscriptions) {
-            publishRetainedMessagesInSession(subscription, username);
-        }
+        publishRetainedMessagesInSession(newSubscriptions, username);
 
         boolean success = this.subscriptionInCourse.remove(executionKey, SubscriptionState.STORED);
         if (!success) {
@@ -884,24 +882,32 @@ public class ProtocolProcessor {
         return new MqttSubAckMessage(fixedHeader, from(messageId), payload);
     }
 
-    private void publishRetainedMessagesInSession(final Subscription newSubscription, String username) {
-        LOG.info("Retrieving retained messages CId={}, topics={}", newSubscription.getClientId(),
-                newSubscription.getTopicFilter());
+    private void publishRetainedMessagesInSession(List<Subscription> newSubscriptions, String username) {
+        for (Subscription newSubscription : newSubscriptions) {
+            LOG.info(
+                    "Retrieving retained messages. CId = {}, topics = {}.",
+                    newSubscription.getClientId(),
+                    newSubscription.getTopicFilter());
 
-        // scans retained messages to be published to the new subscription
-        // TODO this is ugly, it does a linear scan on potential big dataset
-        Collection<IMessagesStore.StoredMessage> messages = m_messagesStore
-                .searchMatching(key -> key.match(newSubscription.getTopicFilter()));
+            // scans retained messages to be published to the new subscription
+            // TODO this is ugly, it does a linear scan on potential big dataset
+            Collection<IMessagesStore.StoredMessage> messages = m_messagesStore
+                    .searchMatching(key -> key.match(newSubscription.getTopicFilter()));
 
-        if (!messages.isEmpty()) {
-            LOG.info("Publishing retained messages CId={}, topics={}, messagesNo={}",
-                newSubscription.getClientId(), newSubscription.getTopicFilter(), messages.size());
+            if (!messages.isEmpty()) {
+                LOG.info(
+                        "Publishing retained messages. CId = {}, topics = {}, messagesNo = {}.",
+                        newSubscription.getClientId(),
+                        newSubscription.getTopicFilter(),
+                        messages.size());
+            }
+
+            ClientSession targetSession = m_sessionsStore.sessionForClient(newSubscription.getClientId());
+            this.internalRepublisher.publishRetained(targetSession, messages);
+
+            // notify the Observables
+            m_interceptor.notifyTopicSubscribed(newSubscription, username);
         }
-        ClientSession targetSession = m_sessionsStore.sessionForClient(newSubscription.getClientId());
-        this.internalRepublisher.publishRetained(targetSession, messages);
-
-        // notify the Observables
-        m_interceptor.notifyTopicSubscribed(newSubscription, username);
     }
 
     public void notifyChannelWritable(Channel channel) {
