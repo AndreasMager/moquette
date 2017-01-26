@@ -883,31 +883,25 @@ public class ProtocolProcessor {
     }
 
     private void publishRetainedMessagesInSession(List<Subscription> newSubscriptions, String username) {
-        for (Subscription newSubscription : newSubscriptions) {
-            LOG.info(
-                    "Retrieving retained messages. CId = {}, topics = {}.",
-                    newSubscription.getClientId(),
-                    newSubscription.getTopicFilter());
+        //scans retained messages to be published to the new subscription
+        Map<Subscription, Collection<IMessagesStore.StoredMessage>> pairs =
+                m_messagesStore.searchMatching(newSubscriptions);
 
-            // scans retained messages to be published to the new subscription
-            // TODO this is ugly, it does a linear scan on potential big dataset
-            Collection<IMessagesStore.StoredMessage> messages = m_messagesStore
-                    .searchMatching(key -> key.match(newSubscription.getTopicFilter()));
+        pairs.forEach((sub, messages) -> {
+            LOG.info("Retrieving retained messages. CId = {}, topics = {}.", sub.getClientId(),
+                    sub.getTopicFilter());
 
             if (!messages.isEmpty()) {
-                LOG.info(
-                        "Publishing retained messages. CId = {}, topics = {}, messagesNo = {}.",
-                        newSubscription.getClientId(),
-                        newSubscription.getTopicFilter(),
-                        messages.size());
+                LOG.info("Publishing retained messages. CId = {}, topics = {}, messagesNo = {}.",
+                        sub.getClientId(), sub.getTopicFilter(), messages.size());
             }
 
-            ClientSession targetSession = m_sessionsStore.sessionForClient(newSubscription.getClientId());
+            ClientSession targetSession = m_sessionsStore.sessionForClient(sub.getClientId());
             this.internalRepublisher.publishRetained(targetSession, messages);
 
-            // notify the Observables
-            m_interceptor.notifyTopicSubscribed(newSubscription, username);
-        }
+            //notify the Observables
+            m_interceptor.notifyTopicSubscribed(sub, username);
+        });
     }
 
     public void notifyChannelWritable(Channel channel) {

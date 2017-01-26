@@ -310,8 +310,9 @@ public class ProtocolProcessorTest extends AbstractProtocolProcessorCommonUtils 
         // prepare and existing retained store
         publishToAs("Publisher", FAKE_TOPIC, AT_LEAST_ONCE, 100, true);
 
-        Collection<IMessagesStore.StoredMessage> messages = m_messagesStore
-                .searchMatching(key -> key.match(new Topic(FAKE_TOPIC)));
+        Map<Subscription, Collection<StoredMessage>> messages = m_messagesStore.searchMatching(
+                         Arrays.asList(new Subscription("id", new Topic("#"), MqttQoS.AT_MOST_ONCE)));
+
         assertFalse(messages.isEmpty());
 
         // Exercise
@@ -319,7 +320,9 @@ public class ProtocolProcessorTest extends AbstractProtocolProcessorCommonUtils 
         publishToAs("Publisher", FAKE_TOPIC, AT_MOST_ONCE, true);
 
         // Verify
-        messages = m_messagesStore.searchMatching(key -> key.match(new Topic(FAKE_TOPIC)));
+        messages = m_messagesStore.searchMatching(
+                Arrays.asList(new Subscription("id", new Topic("#"), MqttQoS.AT_MOST_ONCE)));
+
         assertTrue(messages.isEmpty());
     }
 

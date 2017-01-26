@@ -21,7 +21,10 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import java.io.Serializable;
+import io.moquette.spi.impl.subscriptions.Subscription;
 import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -100,7 +103,7 @@ public interface IMessagesStore {
      *            the condition to match during the search.
      * @return the collection of matching messages.
      */
-    Collection<StoredMessage> searchMatching(IMatchingCondition condition);
+    Map<Subscription, Collection<StoredMessage>> searchMatching(List<Subscription> newSubscriptions);
 
     void cleanRetained(Topic topic);
 

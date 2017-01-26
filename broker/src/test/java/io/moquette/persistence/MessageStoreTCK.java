@@ -8,14 +8,14 @@ import io.moquette.spi.impl.subscriptions.Topic;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import org.junit.Test;
-
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
-
+import java.util.Map;
 import static io.moquette.spi.impl.subscriptions.Topic.asTopic;
 import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 import static io.netty.handler.codec.mqtt.MqttQoS.EXACTLY_ONCE;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 /**
  * Defines all test that an implementation of a IMessageStore should satisfy.
@@ -37,15 +37,12 @@ public abstract class MessageStoreTCK {
         // Exercise
         session.cleanSession();
 
-        // Verify the message store for session is empty.
-        StoredMessage storedPublish = messagesStore.searchMatching(new IMatchingCondition() {
+        Subscription sub = new Subscription("clientId", new Topic("/topic"), MqttQoS.AT_LEAST_ONCE);
 
-            @Override
-            public boolean match(Topic key) {
-                return key.match(new Topic("/topic"));
-            }
-        }).iterator().next();
-        assertNotNull("The stored retained message must be present after client's session drop", storedPublish);
+        // Verify the message store for session is empty.
+        Map<Subscription, Collection<StoredMessage>> storedPublish = messagesStore.searchMatching(Arrays.asList(sub));
+        assertEquals("The stored retained message must be present after client's session drop",
+                storedPublish.get(sub).isEmpty(), false);
     }
 
     @Test
@@ -55,14 +52,10 @@ public abstract class MessageStoreTCK {
 
         messagesStore.storeRetained(asTopic("/topic"), msgStored);
 
-        //Verify the message is in the store
-        StoredMessage msgRetrieved = messagesStore.searchMatching(new IMatchingCondition() {
+        Subscription sub = new Subscription("clientId", new Topic("/topic"), MqttQoS.AT_LEAST_ONCE);
 
-            @Override
-            public boolean match(Topic key) {
-                return key.match(new Topic("/topic"));
-            }
-        }).iterator().next();
+        //Verify the message is in the store
+        StoredMessage msgRetrieved = messagesStore.searchMatching(Arrays.asList(sub)).get(sub).iterator().next();
 
         final ByteBuf payload = msgRetrieved.getPayload();
         byte[] content = new byte[payload.readableBytes()];

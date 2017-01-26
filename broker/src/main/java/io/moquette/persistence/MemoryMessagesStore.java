@@ -16,8 +16,9 @@
 
 package io.moquette.persistence;
 
-import io.moquette.spi.IMatchingCondition;
 import io.moquette.spi.IMessagesStore;
+import io.moquette.HashColletions;
+import io.moquette.spi.impl.subscriptions.Subscription;
 import io.moquette.spi.impl.subscriptions.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,17 +48,21 @@ public class MemoryMessagesStore implements IMessagesStore {
     }
 
     @Override
-    public Collection<StoredMessage> searchMatching(IMatchingCondition condition) {
-        LOG.debug("searchMatching scanning all retained messages, presents are {}", m_retainedStore.size());
+    public Map<Subscription, Collection<StoredMessage>> searchMatching(List<Subscription> newSubscriptions) {
+        LOG.debug("Scanning retained messages...");
+        Map<Subscription, Collection<StoredMessage>> results = HashColletions.createHashMap(newSubscriptions.size());
 
-        List<StoredMessage> results = new ArrayList<>();
-
-        for (Map.Entry<Topic, StoredMessage> entry : m_retainedStore.entrySet()) {
-            StoredMessage storedMsg = entry.getValue();
-            if (condition.match(entry.getKey())) {
-                results.add(storedMsg);
-            }
+        for (Subscription sub : newSubscriptions) {
+            m_retainedStore.forEach((topic, storedMsg) -> {
+                // TODO this is ugly, it does a linear scan on potential big dataset
+                if (topic.match(sub.getTopicFilter())) {
+                    results.computeIfAbsent(sub, k -> new LinkedList<>());
+                    results.get(sub).add(storedMsg);
+                }
+            });
         }
+
+        LOG.trace("The retained messages have been scanned. MatchingMessages = {}.", results);
 
         return results;
     }

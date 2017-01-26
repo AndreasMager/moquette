@@ -16,15 +16,16 @@
 
 package io.moquette.persistence.mapdb;
 
-import io.moquette.spi.IMatchingCondition;
+import io.moquette.HashColletions;
 import io.moquette.spi.IMessagesStore;
+import io.moquette.spi.impl.subscriptions.Subscription;
 import io.moquette.spi.impl.subscriptions.Topic;
 import org.mapdb.DB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
@@ -51,13 +52,19 @@ class MapDBMessagesStore implements IMessagesStore {
     }
 
     @Override
-    public Collection<StoredMessage> searchMatching(IMatchingCondition condition) {
+    public Map<Subscription, Collection<StoredMessage>> searchMatching(List<Subscription> newSubscriptions) {
         LOG.debug("Scanning retained messages");
-        List<StoredMessage> results = new ArrayList<>();
-        for (Map.Entry<Topic, StoredMessage> entry : m_retainedStore.entrySet()) {
-            StoredMessage storedMsg = entry.getValue();
-            if (condition.match(entry.getKey())) {
-                results.add(storedMsg);
+        Map<Subscription, Collection<StoredMessage>> results = HashColletions.createHashMap(newSubscriptions.size());
+
+        for (Subscription sub : newSubscriptions) {
+            for (Map.Entry<Topic, StoredMessage> entry : m_retainedStore.entrySet()) {
+                StoredMessage storedMsg = entry.getValue();
+
+                //TODO this is ugly, it does a linear scan on potential big dataset
+                if (entry.getKey().match(sub.getTopicFilter())) {
+                    results.computeIfAbsent(sub, k -> new LinkedHashSet<>());
+                    results.get(sub).add(storedMsg);
+                }
             }
         }
 
