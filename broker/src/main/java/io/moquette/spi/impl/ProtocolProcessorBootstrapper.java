@@ -99,13 +99,7 @@ public class ProtocolProcessorBootstrapper {
         messagesStore = store.messagesStore();
         m_sessionsStore = store.sessionsStore();
         this.subscriptionsStore = m_sessionsStore.subscriptionStore();
-        storeShutdown = new Runnable() {
-
-            @Override
-            public void run() {
-                store.close();
-            }
-        };
+        storeShutdown = () -> store.close();
 
         LOG.info("Configuring message interceptors...");
 
