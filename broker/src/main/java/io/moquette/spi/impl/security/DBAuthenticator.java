@@ -22,6 +22,7 @@ import io.moquette.spi.security.IAuthenticator;
 import org.apache.commons.codec.binary.Hex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.*;
@@ -76,7 +77,7 @@ public class DBAuthenticator implements IAuthenticator {
     }
 
     @Override
-    public synchronized boolean checkValid(String clientId, String username, byte[] password) {
+    public synchronized boolean checkValid(String clientId, String username, String password) {
         // Check Username / Password in DB using sqlQuery
         if (username == null || password == null) {
             LOG.info("username or password was null");
@@ -88,7 +89,7 @@ public class DBAuthenticator implements IAuthenticator {
             r = this.preparedStatement.executeQuery();
             if (r.next()) {
                 final String foundPwq = r.getString(1);
-                messageDigest.update(password);
+                messageDigest.update(password.getBytes(Charset.forName("UTF-8")));
                 byte[] digest = messageDigest.digest();
                 String encodedPasswd = new String(Hex.encodeHex(digest));
                 return foundPwq.equals(encodedPasswd);

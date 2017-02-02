@@ -113,7 +113,7 @@ public class ResourceAuthenticator implements IAuthenticator {
     }
 
     @Override
-    public boolean checkValid(String clientId, String username, byte[] password) {
+    public boolean checkValid(String clientId, String username, String password) {
         if (username == null || password == null) {
             LOG.info("username or password was null");
             return false;

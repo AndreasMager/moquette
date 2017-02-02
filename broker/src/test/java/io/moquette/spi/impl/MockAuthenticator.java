@@ -33,7 +33,7 @@ class MockAuthenticator implements IAuthenticator {
         m_userPwds = userPwds;
     }
 
-    public boolean checkValid(String clientId, String username, byte[] password) {
+    public boolean checkValid(String clientId, String username, String password) {
         if (!m_clientIds.contains(clientId)) {
             return false;
         }

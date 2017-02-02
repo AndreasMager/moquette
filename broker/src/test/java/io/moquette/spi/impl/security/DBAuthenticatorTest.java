@@ -70,7 +70,7 @@ public class DBAuthenticatorTest {
                 JDBC_H2_MEM_TEST,
                 "SELECT PASSWORD FROM ACCOUNT WHERE LOGIN=?",
                 SHA_256);
-        assertTrue(dbAuthenticator.checkValid(null, "dbuser", "password".getBytes()));
+        assertTrue(dbAuthenticator.checkValid(null, "dbuser", "password"));
     }
 
     @Test
@@ -80,7 +80,7 @@ public class DBAuthenticatorTest {
                 JDBC_H2_MEM_TEST,
                 "SELECT PASSWORD FROM ACCOUNT WHERE LOGIN=?",
                 SHA_256);
-        assertFalse(dbAuthenticator.checkValid(null, "dbuser2", "password".getBytes()));
+        assertFalse(dbAuthenticator.checkValid(null, "dbuser2", "password"));
     }
 
     @Test
@@ -90,7 +90,7 @@ public class DBAuthenticatorTest {
                 JDBC_H2_MEM_TEST,
                 "SELECT PASSWORD FROM ACCOUNT WHERE LOGIN=?",
                 SHA_256);
-        assertFalse(dbAuthenticator.checkValid(null, "dbuser", "wrongPassword".getBytes()));
+        assertFalse(dbAuthenticator.checkValid(null, "dbuser", "wrongPassword"));
     }
 
     @After

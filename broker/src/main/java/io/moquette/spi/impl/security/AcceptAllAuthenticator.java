@@ -20,7 +20,7 @@ import io.moquette.spi.security.IAuthenticator;
 
 public class AcceptAllAuthenticator implements IAuthenticator {
 
-    public boolean checkValid(String clientId, String username, byte[] password) {
+    public boolean checkValid(String clientId, String username, String password) {
         return true;
     }
 }

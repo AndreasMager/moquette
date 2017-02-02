@@ -321,9 +321,9 @@ public class ProtocolProcessor {
     private boolean login(Channel channel, MqttConnectMessage msg, final String clientId) {
         // handle user authentication
         if (msg.variableHeader().hasUserName()) {
-            byte[] pwd = null;
+            String pwd = null;
             if (msg.variableHeader().hasPassword()) {
-                pwd = msg.payload().password().getBytes();
+                pwd = msg.payload().password();
             } else if (!this.allowAnonymous) {
                 LOG.error("Client didn't supply any password and MQTT anonymous mode is disabled CId={}", clientId);
                 failedCredentials(channel);
