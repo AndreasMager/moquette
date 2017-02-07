@@ -52,6 +52,10 @@ public interface IMessagesStore {
             return m_qos;
         }
 
+        public byte[] getPayloadBytes() {
+            return m_payload;
+        }
+
         public String getTopic() {
             return m_topic;
         }
