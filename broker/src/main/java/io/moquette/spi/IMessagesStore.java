@@ -22,6 +22,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import java.io.Serializable;
 import io.moquette.spi.impl.subscriptions.Subscription;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -32,17 +33,15 @@ import java.util.UUID;
  */
 public interface IMessagesStore {
 
-    class StoredMessage implements Serializable {
+    class Message implements Serializable {
 
         private static final long serialVersionUID = 1755296138639817304L;
         final MqttQoS m_qos;
         final byte[] m_payload;
         final String m_topic;
         private boolean m_retained;
-        private String m_clientID;
-        private UUID m_guid;
 
-        public StoredMessage(byte[] message, MqttQoS qos, String topic) {
+        public Message(byte[] message, MqttQoS qos, String topic) {
             m_qos = qos;
             m_payload = message;
             m_topic = topic;
@@ -58,6 +57,70 @@ public interface IMessagesStore {
 
         public String getTopic() {
             return m_topic;
+        }
+
+        public void setRetained(boolean retained) {
+            this.m_retained = retained;
+        }
+
+        public boolean isRetained() {
+            return m_retained;
+        }
+
+        @Override
+        public String toString() {
+            return "PublishEvent{" +
+                    ", m_qos=" + m_qos +
+                    ", m_topic='" + m_topic + '\'' +
+                    '}';
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + Arrays.hashCode(m_payload);
+            result = prime * result + ((m_qos == null) ? 0 : m_qos.hashCode());
+            result = prime * result + ((m_topic == null) ? 0 : m_topic.hashCode());
+            result = prime * result + (m_retained ? 0 : 1);
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (obj == null)
+                return false;
+            if (getClass() != obj.getClass())
+                return false;
+            Message other = (Message) obj;
+            if (!Arrays.equals(m_payload, other.m_payload))
+                return false;
+            if (m_qos != other.m_qos)
+                return false;
+            if (m_retained != other.m_retained)
+                return false;
+            if (m_topic == null) {
+                if (other.m_topic != null)
+                    return false;
+            } else if (!m_topic.equals(other.m_topic))
+                return false;
+            return true;
+        }
+    }
+
+    class StoredMessage extends Message implements Serializable {
+
+        private static final long serialVersionUID = 1755296138639817304L;
+
+        private String m_clientID;
+        private UUID m_guid;
+
+        private boolean m_retained;
+
+        public StoredMessage(byte[] message, MqttQoS qos, String topic) {
+            super(message, qos, topic);
         }
 
         public void setGuid(UUID guid) {
@@ -78,14 +141,6 @@ public interface IMessagesStore {
 
         public ByteBuf getPayload() {
             return Unpooled.copiedBuffer(m_payload);
-        }
-
-        public void setRetained(boolean retained) {
-            this.m_retained = retained;
-        }
-
-        public boolean isRetained() {
-            return m_retained;
         }
 
         @Override
