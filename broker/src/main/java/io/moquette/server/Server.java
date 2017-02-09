@@ -25,7 +25,6 @@ import com.hazelcast.core.HazelcastInstanceNotActiveException;
 import com.hazelcast.core.ITopic;
 import io.moquette.BrokerConstants;
 import io.moquette.connections.IConnectionsManager;
-import io.moquette.interception.HazelcastInterceptHandler;
 import io.moquette.interception.HazelcastMsg;
 import io.moquette.interception.InterceptHandler;
 import io.moquette.server.config.*;
@@ -56,8 +55,6 @@ import static io.moquette.logging.LoggingUtils.getInterceptorIds;
 public class Server {
 
     private static final Logger LOG = LoggerFactory.getLogger(Server.class);
-
-    private static final String HZ_INTERCEPT_HANDLER = HazelcastInterceptHandler.class.getCanonicalName();
 
     private ServerAcceptor m_acceptor;
 
@@ -202,7 +199,7 @@ public class Server {
     private void configureCluster(IConfig config) throws FileNotFoundException {
         LOG.info("Configuring embedded Hazelcast instance");
         String interceptHandlerClassname = config.getProperty(BrokerConstants.INTERCEPT_HANDLER_PROPERTY_NAME);
-        if (interceptHandlerClassname == null || !HZ_INTERCEPT_HANDLER.equals(interceptHandlerClassname)) {
+        if (interceptHandlerClassname == null) {
             LOG.info("There are no Hazelcast intercept handlers. The server won't start a Hazelcast instance.");
             return;
         }
@@ -222,9 +219,12 @@ public class Server {
     }
 
     private void listenOnHazelCastMsg() {
-        LOG.info("Subscribing to Hazelcast topic. TopicName={}", "moquette");
+        String topicName = config.getProperty(BrokerConstants.HAZELCAST_TOPIC_NAME) == null
+                ? "moquette": config.getProperty(BrokerConstants.HAZELCAST_TOPIC_NAME);
+
+        LOG.info("Subscribing to Hazelcast topic. TopicName = {}.", topicName);
         HazelcastInstance hz = getHazelcastInstance();
-        ITopic<HazelcastMsg> topic = hz.getTopic("moquette");
+        ITopic<HazelcastMsg> topic = hz.getTopic(topicName);
         topic.addMessageListener(new HazelcastListener(this));
     }
 

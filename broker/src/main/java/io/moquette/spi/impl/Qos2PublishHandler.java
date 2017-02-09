@@ -35,8 +35,6 @@ import static io.moquette.spi.impl.Utils.messageId;
 import static io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader.from;
 import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 
-import java.util.UUID;
-
 class Qos2PublishHandler extends QosPublishHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(Qos2PublishHandler.class);
@@ -96,7 +94,7 @@ class Qos2PublishHandler extends QosPublishHandler {
 //            }
 //        }
         //TODO this should happen on PUB_REL, else we notify false positive
-        m_interceptor.notifyTopicPublished(msg, clientID, username);
+        m_interceptor.notifyTopicPublished(msg, topic, clientID, username);
     }
 
     /**

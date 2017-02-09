@@ -22,6 +22,7 @@ import io.moquette.interception.Interceptor;
 import io.moquette.interception.messages.*;
 import io.moquette.server.config.IConfig;
 import io.moquette.spi.impl.subscriptions.Subscription;
+import io.moquette.spi.impl.subscriptions.Topic;
 import io.netty.handler.codec.mqtt.MqttConnectMessage;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import io.netty.util.ReferenceCountUtil;
@@ -118,17 +119,16 @@ final class BrokerInterceptor implements Interceptor {
     }
 
     @Override
-    public void notifyTopicPublished(final MqttPublishMessage msg, final String clientID, final String username) {
+    public void notifyTopicPublished(MqttPublishMessage msg, Topic topic, String clientID, String username) {
         msg.retain();
 
         executor.execute(() -> {
                 try {
                     int messageId = msg.variableHeader().messageId();
-                    String topic = msg.variableHeader().topicName();
                     for (InterceptHandler handler : handlers.get(InterceptPublishMessage.class)) {
                         LOG.debug("Notifying MQTT PUBLISH message to interceptor. CId={}, messageId={}, topic={}, "
                                 + "interceptorId={}", clientID, messageId, topic, handler.getID());
-                        handler.onPublish(new InterceptPublishMessage(msg, clientID, username));
+                        handler.onPublish(new InterceptPublishMessage(msg, clientID, username, topic));
                     }
                 } finally {
                     ReferenceCountUtil.release(msg);
@@ -146,11 +146,19 @@ final class BrokerInterceptor implements Interceptor {
     }
 
     @Override
-    public void notifyTopicUnsubscribed(final String topic, final String clientID, final String username) {
+    public void notifyTopicUnsubscribed(Topic topic, String clientID, String username) {
         for (final InterceptHandler handler : this.handlers.get(InterceptUnsubscribeMessage.class)) {
             LOG.debug("Notifying MQTT UNSUBSCRIBE message to interceptor. CId={}, topic={}, interceptorId={}", clientID,
                 topic, handler.getID());
             executor.execute(() -> handler.onUnsubscribe(new InterceptUnsubscribeMessage(topic, clientID, username)));
+        }
+    }
+
+    @Override
+    public void notifyWipeSubscriptions(String clientID) {
+        for (InterceptHandler handler : this.handlers.get(WipeSubscriptionsMessage.class)) {
+            LOG.debug("Notifying MQTT ACK message to interceptor. MqttClientId = {}.", clientID);
+            executor.execute(() -> handler.onWipeSubscriptions(new WipeSubscriptionsMessage(clientID)));
         }
     }
 
