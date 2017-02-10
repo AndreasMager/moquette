@@ -154,14 +154,6 @@ public class ClientSession {
         subscriptions.removeAll(subscriptionsToRemove);
     }
 
-    public void disconnect() {
-        if (this.cleanSession) {
-            LOG.info("Client disconnected. Removing its subscriptions. CId={}", clientID);
-            // cleanup topic subscriptions
-            cleanSession();
-        }
-    }
-
     public void cleanSession() {
         m_sessionsStore.cleanSession(this.clientID);
     }
