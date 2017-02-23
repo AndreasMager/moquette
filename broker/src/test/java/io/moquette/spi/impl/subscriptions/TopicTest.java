@@ -116,6 +116,68 @@ public class TopicTest {
         assertThatTopic("foo/bar/").matches("foo/bar/+");
     }
 
+    @Test
+    public void rootAndTailConstructor() {
+        Topic.rootLength = 1;
+        assertThat(new Topic("topic", "1/2"))
+            .isEqualTo(new Topic("topic/1/2"))
+            .rootIsEqualTo("topic")
+            .tailIsEqualTo("1/2")
+            .isValid()
+            .containsToken("topic", "1", "2");
+
+        Topic.rootLength = 2;
+        assertThat(new Topic("topic/1", "2"))
+            .isEqualTo(new Topic("topic/1/2"))
+            .rootIsEqualTo("topic/1")
+            .tailIsEqualTo("2")
+            .isValid()
+            .containsToken("topic", "1", "2");
+
+        Topic.rootLength = 3;
+        assertThat(new Topic("topic/1/2", ""))
+            .isEqualTo(new Topic("topic/1/2/"))
+            .rootIsEqualTo("topic/1/2")
+            .tailIsEqualTo("")
+            .isValid()
+            .containsToken("topic", "1", "2", "");
+
+        Topic.rootLength = 4;
+        assertThat(new Topic("topic/1/2", ""))
+            // This is ugly
+            .isEqualTo(new Topic("topic/1/2/"))
+            .rootIsEqualTo("topic/1/2")
+            .tailIsEqualTo("")
+            .isValid()
+            .containsToken("topic", "1", "2", "");
+    }
+
+    @Test
+    public void rootAndTail() {
+        Topic.rootLength = 1;
+        assertThatTopic("foo/bar/baz")
+            .rootIsEqualTo("foo")
+            .tailIsEqualTo("bar/baz");
+
+        Topic.rootLength = 2;
+        assertThatTopic("foo/bar/baz")
+            .rootIsEqualTo("foo/bar")
+            .tailIsEqualTo("baz");
+
+        Topic.rootLength = 3;
+        assertThatTopic("foo/bar/baz/")
+            .rootIsEqualTo("foo/bar/baz")
+            .tailIsEqualTo("");
+
+        Topic.rootLength = 4;
+        // This will log a warning
+        assertThatTopic("foo/bar/baz")
+            .rootIsEqualTo("foo/bar/baz")
+            .tailIsEqualTo("");
+
+        Topic.rootLength = 1;
+    }
+
     public static TopicAssert assertThatTopic(String topic) {
         return new TopicAssert(new Topic(topic));
     }
@@ -151,6 +213,18 @@ public class TopicTest {
 
         public TopicAssert containsToken(Object... tokens) {
             Assertions.assertThat(actual.getTokens()).containsExactly(asArray(tokens));
+
+            return myself;
+        }
+
+        public TopicAssert rootIsEqualTo(String root) {
+            Assertions.assertThat(actual.getRoot()).isEqualTo(root);
+
+            return myself;
+        }
+
+        public TopicAssert tailIsEqualTo(String tail) {
+            Assertions.assertThat(actual.getTail()).isEqualTo(tail);
 
             return myself;
         }

@@ -32,11 +32,17 @@ public class Topic implements Serializable {
 
     private static final long serialVersionUID = 2438799283749822L;
 
+    public static int rootLength = 1;
+
     private final String topic;
 
     private transient List<String> tokens;
 
     private transient boolean valid;
+
+    private transient String root;
+
+    private transient String tail;
 
     /**
      * Factory method
@@ -53,6 +59,12 @@ public class Topic implements Serializable {
         this.tokens = tokens;
         this.topic = String.join("/", tokens);
         this.valid = true;
+    }
+
+    public Topic(String root, String tail) {
+        this.root = root;
+        this.tail = tail;
+        this.topic = root + "/" + tail;
     }
 
     public List<String> getTokens() {
@@ -185,6 +197,37 @@ public class Topic implements Serializable {
         // i--;
         // }
         return i == msgTokens.size();
+    }
+
+    public String getRoot() {
+        if (root == null)
+            initRoot();
+
+        return root;
+    }
+
+    private void initRoot() {
+        if (getTokens().size() < rootLength)
+            LOG.warn("Topic with rootlength={} has no Tail: {}", rootLength, topic);
+
+        this.root = String.join("/", getTokens().subList(0, Math.min(rootLength, getTokens().size())));
+    }
+
+    public String getTail() {
+        if (tail == null)
+            initTail();
+
+        return tail;
+    }
+
+    private void initTail() {
+        if (getTokens().size() < rootLength) {
+            LOG.warn("Topic with rootlength={} has no Tail: {}", rootLength, topic);
+            this.tail = "";
+            return;
+        }
+
+        this.tail = String.join("/", getTokens().subList(rootLength, getTokens().size()));
     }
 
     @Override
