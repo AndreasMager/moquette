@@ -25,95 +25,99 @@ public class TopicTest {
 
     @Test
     public void testParseTopic() {
-        assertThat(new Topic("finance/stock/ibm")).containsToken("finance", "stock", "ibm");
+        assertThatTopic("finance/stock/ibm").containsToken("finance", "stock", "ibm");
 
-        assertThat(new Topic("/finance/stock/ibm")).containsToken(Tokens.EMPTY, "finance", "stock", "ibm");
+        assertThatTopic("/finance/stock/ibm").containsToken(Tokens.EMPTY, "finance", "stock", "ibm");
 
-        assertThat(new Topic("/")).containsToken(Tokens.EMPTY, Tokens.EMPTY);
+        assertThatTopic("/").containsToken(Tokens.EMPTY, Tokens.EMPTY);
     }
 
     @Test
     public void testParseTopicMultiValid() {
-        assertThat(new Topic("finance/stock/#")).containsToken("finance", "stock", Tokens.MULTI);
+        assertThatTopic("finance/stock/#").containsToken("finance", "stock", Tokens.MULTI);
 
-        assertThat(new Topic("#")).containsToken(Tokens.MULTI);
+        assertThatTopic("#").containsToken(Tokens.MULTI);
     }
 
     @Test
     public void testValidationProcess() {
         // TopicMultiInTheMiddle
-        assertThat(new Topic("finance/#/closingprice")).isInValid();
+        assertThatTopic("finance/#/closingprice").isInValid();
 
         // MultiNotAfterSeparator
-        assertThat(new Topic("finance#")).isInValid();
+        assertThatTopic("finance#").isInValid();
 
         // TopicMultiNotAlone
-        assertThat(new Topic("/finance/#closingprice")).isInValid();
+        assertThatTopic("/finance/#closingprice").isInValid();
 
         // SingleNotAferSeparator
-        assertThat(new Topic("finance+")).isInValid();
+        assertThatTopic("finance+").isInValid();
 
-        assertThat(new Topic("finance/+")).isValid();
+        assertThatTopic("finance/+").isValid();
     }
 
     @Test
     public void testParseTopicSingleValid() {
-        assertThat(new Topic("finance/stock/+")).containsToken("finance", "stock", Tokens.SINGLE);
+        assertThatTopic("finance/stock/+").containsToken("finance", "stock", Tokens.SINGLE);
 
-        assertThat(new Topic("+")).containsToken(Tokens.SINGLE);
+        assertThatTopic("+").containsToken(Tokens.SINGLE);
 
-        assertThat(new Topic("finance/+/ibm")).containsToken("finance", Tokens.SINGLE, "ibm");
+        assertThatTopic("finance/+/ibm").containsToken("finance", Tokens.SINGLE, "ibm");
     }
 
     @Test
     public void testMatchTopics_simple() {
-        assertThat(new Topic("/")).matches("/");
-        assertThat(new Topic("/finance")).matches("/finance");
+        assertThatTopic("/").matches("/");
+        assertThatTopic("/finance").matches("/finance");
     }
 
     @Test
     public void testMatchTopics_multi() {
-        assertThat(new Topic("finance")).matches("#");
-        assertThat(new Topic("finance")).matches("finance/#");
-        assertThat(new Topic("finance/stock")).matches("finance/#");
-        assertThat(new Topic("finance/stock/ibm")).matches("finance/#");
+        assertThatTopic("finance").matches("#");
+        assertThatTopic("finance").matches("finance/#");
+        assertThatTopic("finance/stock").matches("finance/#");
+        assertThatTopic("finance/stock/ibm").matches("finance/#");
     }
 
     @Test
     public void testMatchTopics_single() {
-        assertThat(new Topic("finance")).matches("+");
-        assertThat(new Topic("finance/stock")).matches("finance/+");
-        assertThat(new Topic("finance")).doesNotMatch("finance/+");
-        assertThat(new Topic("/finance")).matches("/+");
-        assertThat(new Topic("/finance")).doesNotMatch("+");
-        assertThat(new Topic("/finance")).matches("+/+");
-        assertThat(new Topic("/finance/stock/ibm")).matches("/finance/+/ibm");
-        assertThat(new Topic("/")).matches("+/+");
-        assertThat(new Topic("sport/")).matches("sport/+");
-        assertThat(new Topic("/finance/stock")).doesNotMatch("+");
+        assertThatTopic("finance").matches("+");
+        assertThatTopic("finance/stock").matches("finance/+");
+        assertThatTopic("finance").doesNotMatch("finance/+");
+        assertThatTopic("/finance").matches("/+");
+        assertThatTopic("/finance").doesNotMatch("+");
+        assertThatTopic("/finance").matches("+/+");
+        assertThatTopic("/finance/stock/ibm").matches("/finance/+/ibm");
+        assertThatTopic("/").matches("+/+");
+        assertThatTopic("sport/").matches("sport/+");
+        assertThatTopic("/finance/stock").doesNotMatch("+");
     }
 
     @Test
     public void rogerLightMatchTopics() {
-        assertThat(new Topic("foo/bar")).matches("foo/bar");
-        assertThat(new Topic("foo/bar")).matches("foo/+");
-        assertThat(new Topic("foo/bar/baz")).matches("foo/+/baz");
-        assertThat(new Topic("foo/bar/baz")).matches("foo/+/#");
-        assertThat(new Topic("foo/bar/baz")).matches("#");
+        assertThatTopic("foo/bar").matches("foo/bar");
+        assertThatTopic("foo/bar").matches("foo/+");
+        assertThatTopic("foo/bar/baz").matches("foo/+/baz");
+        assertThatTopic("foo/bar/baz").matches("foo/+/#");
+        assertThatTopic("foo/bar/baz").matches("#");
 
-        assertThat(new Topic("foo")).doesNotMatch("foo/bar");
-        assertThat(new Topic("foo/bar/baz")).doesNotMatch("foo/+");
-        assertThat(new Topic("foo/bar/bar")).doesNotMatch("foo/+/baz");
-        assertThat(new Topic("fo2/bar/baz")).doesNotMatch("foo/+/#");
+        assertThatTopic("foo").doesNotMatch("foo/bar");
+        assertThatTopic("foo/bar/baz").doesNotMatch("foo/+");
+        assertThatTopic("foo/bar/bar").doesNotMatch("foo/+/baz");
+        assertThatTopic("fo2/bar/baz").doesNotMatch("foo/+/#");
 
-        assertThat(new Topic("/foo/bar")).matches("#");
-        assertThat(new Topic("/foo/bar")).matches("/#");
-        assertThat(new Topic("foo/bar")).doesNotMatch("/#");
+        assertThatTopic("/foo/bar").matches("#");
+        assertThatTopic("/foo/bar").matches("/#");
+        assertThatTopic("foo/bar").doesNotMatch("/#");
 
-        assertThat(new Topic("foo//bar")).matches("foo//bar");
-        assertThat(new Topic("foo//bar")).matches("foo//+");
-        assertThat(new Topic("foo///baz")).matches("foo/+/+/baz");
-        assertThat(new Topic("foo/bar/")).matches("foo/bar/+");
+        assertThatTopic("foo//bar").matches("foo//bar");
+        assertThatTopic("foo//bar").matches("foo//+");
+        assertThatTopic("foo///baz").matches("foo/+/+/baz");
+        assertThatTopic("foo/bar/").matches("foo/bar/+");
+    }
+
+    public static TopicAssert assertThatTopic(String topic) {
+        return new TopicAssert(new Topic(topic));
     }
 
     @Test
