@@ -124,7 +124,7 @@ public class Topic implements Serializable {
             }
         }
 
-        return res;
+        return Collections.unmodifiableList(res);
     }
 
     public String headToken() {
