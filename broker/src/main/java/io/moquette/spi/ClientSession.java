@@ -50,14 +50,14 @@ public class ClientSession {
          * @param messageID the packet ID used in transmission
          * @param msg the message to put in flight zone
          */
-        void waitingAck(int messageID, IMessagesStore.StoredMessage msg) {
+        void waitingAck(int messageID, IMessagesStore.Message msg) {
             if (LOG.isTraceEnabled()) {
-                LOG.trace("Adding to inflight {}, guid <{}>", messageID, msg.getGuid());
+                LOG.trace("Adding to inflight {}", messageID);
             }
             m_sessionsStore.inFlight(ClientSession.this.clientID, messageID, msg);
         }
 
-        IMessagesStore.StoredMessage acknowledged(int messageID) {
+        IMessagesStore.Message acknowledged(int messageID) {
             if (LOG.isTraceEnabled())
                 LOG.trace("Acknowledging inflight, clientID <{}> messageID {}", ClientSession.this.clientID, messageID);
             return m_sessionsStore.inFlightAck(ClientSession.this.clientID, messageID);
@@ -171,7 +171,7 @@ public class ClientSession {
         return this.m_sessionsStore.nextPacketID(this.clientID);
     }
 
-    public IMessagesStore.StoredMessage inFlightAcknowledged(int messageID) {
+    public IMessagesStore.Message inFlightAcknowledged(int messageID) {
         return outboundFlightZone.acknowledged(messageID);
     }
 
@@ -180,14 +180,14 @@ public class ClientSession {
      *
      * @return the packetID for the message in flight.
      * */
-    public int inFlightAckWaiting(IMessagesStore.StoredMessage msg) {
+    public int inFlightAckWaiting(IMessagesStore.Message msg) {
         LOG.debug("Adding message ot inflight zone. CId={}", clientID);
         int messageId = ClientSession.this.nextPacketId();
         outboundFlightZone.waitingAck(messageId, msg);
         return messageId;
     }
 
-    public IMessagesStore.StoredMessage secondPhaseAcknowledged(int messageID) {
+    public IMessagesStore.Message secondPhaseAcknowledged(int messageID) {
         return m_sessionsStore.secondPhaseAcknowledged(clientID, messageID);
     }
 
@@ -209,7 +209,7 @@ public class ClientSession {
         inboundFlightZone.waitingRel(messageID, msg);
     }
 
-    public void moveInFlightToSecondPhaseAckWaiting(int messageID, IMessagesStore.StoredMessage msg) {
+    public void moveInFlightToSecondPhaseAckWaiting(int messageID, IMessagesStore.Message msg) {
         m_sessionsStore.moveInFlightToSecondPhaseAckWaiting(this.clientID, messageID, msg);
     }
 

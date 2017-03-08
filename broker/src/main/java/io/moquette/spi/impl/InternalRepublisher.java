@@ -18,6 +18,8 @@ package io.moquette.spi.impl;
 
 import io.moquette.spi.ClientSession;
 import io.moquette.spi.IMessagesStore;
+import io.moquette.spi.IMessagesStore.Message;
+import io.moquette.spi.IMessagesStore.StoredMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.*;
 import org.slf4j.Logger;
@@ -36,8 +38,9 @@ class InternalRepublisher {
         this.messageSender = messageSender;
     }
 
-    void publishRetained(ClientSession targetSession, Collection<IMessagesStore.StoredMessage> messages) {
-        for (IMessagesStore.StoredMessage storedMsg : messages) {
+    void publishRetained(ClientSession targetSession, Collection<Message> messages) {
+
+        for (Message storedMsg : messages) {
             // fire as retained the message
             MqttPublishMessage publishMsg = retainedPublish(storedMsg);
             if (storedMsg.getQos() != MqttQoS.AT_MOST_ONCE) {
@@ -79,12 +82,12 @@ class InternalRepublisher {
             0);
     }
 
-    private MqttPublishMessage retainedPublish(IMessagesStore.StoredMessage storedMessage) {
+    private MqttPublishMessage retainedPublish(IMessagesStore.Message storedMessage) {
         return createPublishForQos(storedMessage.getTopic(), storedMessage.getQos(), storedMessage.getPayload(), true,
             0);
     }
 
-    private MqttPublishMessage retainedPublish(IMessagesStore.StoredMessage storedMessage, Integer packetID) {
+    private MqttPublishMessage retainedPublish(IMessagesStore.Message storedMessage, Integer packetID) {
         return createPublishForQos(storedMessage.getTopic(), storedMessage.getQos(), storedMessage.getPayload(), true,
             packetID);
     }

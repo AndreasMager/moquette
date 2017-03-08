@@ -55,6 +55,10 @@ public interface IMessagesStore {
             return m_payload;
         }
 
+        public ByteBuf getPayload() {
+            return Unpooled.copiedBuffer(m_payload);
+        }
+
         public String getTopic() {
             return m_topic;
         }
@@ -139,10 +143,6 @@ public interface IMessagesStore {
             this.m_clientID = m_clientID;
         }
 
-        public ByteBuf getPayload() {
-            return Unpooled.copiedBuffer(m_payload);
-        }
-
         @Override
         public String toString() {
             return "PublishEvent{clientID='" + m_clientID + '\'' + ", m_retain="
@@ -162,9 +162,9 @@ public interface IMessagesStore {
      *            the condition to match during the search.
      * @return the collection of matching messages.
      */
-    Map<Subscription, Collection<StoredMessage>> searchMatching(List<Subscription> newSubscriptions);
+    Map<Subscription, Collection<Message>> searchMatching(List<Subscription> newSubscriptions);
 
     void cleanRetained(Topic topic);
 
-    void storeRetained(Topic topic, StoredMessage storedMessage);
+    void storeRetained(Topic topic, Message storedMessage);
 }

@@ -16,23 +16,23 @@
 
 package io.moquette.interception.messages;
 
-import static io.moquette.spi.IMessagesStore.StoredMessage;
+import static io.moquette.spi.IMessagesStore.Message;
 
 public class InterceptAcknowledgedMessage implements InterceptMessage {
 
-    private final StoredMessage msg;
+    private final Message msg;
     private final String username;
     private final String topic;
     private final int packetID;
 
-    public InterceptAcknowledgedMessage(StoredMessage msg, String topic, String username, int packetID) {
+    public InterceptAcknowledgedMessage(Message msg, String topic, String username, int packetID) {
         this.msg = msg;
         this.username = username;
         this.topic = topic;
         this.packetID = packetID;
     }
 
-    public StoredMessage getMsg() {
+    public Message getMsg() {
         return msg;
     }
 

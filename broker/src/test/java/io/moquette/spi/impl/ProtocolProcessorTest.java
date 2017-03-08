@@ -20,6 +20,7 @@ import io.moquette.interception.InterceptHandler;
 import io.moquette.persistence.MemoryStorageService;
 import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.IMessagesStore;
+import io.moquette.spi.IMessagesStore.Message;
 import io.moquette.spi.IMessagesStore.StoredMessage;
 import io.moquette.spi.impl.security.PermitAllAuthorizator;
 import io.moquette.spi.impl.subscriptions.ISubscriptionsDirectory;
@@ -310,7 +311,7 @@ public class ProtocolProcessorTest extends AbstractProtocolProcessorCommonUtils 
         // prepare and existing retained store
         publishToAs("Publisher", FAKE_TOPIC, AT_LEAST_ONCE, 100, true);
 
-        Map<Subscription, Collection<StoredMessage>> messages = m_messagesStore.searchMatching(
+        Map<Subscription, Collection<Message>> messages = m_messagesStore.searchMatching(
                          Arrays.asList(new Subscription("id", new Topic("#"), MqttQoS.AT_MOST_ONCE)));
 
         assertFalse(messages.isEmpty());

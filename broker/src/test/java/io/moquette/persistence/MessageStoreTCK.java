@@ -1,6 +1,7 @@
 package io.moquette.persistence;
 
 import io.moquette.spi.*;
+import io.moquette.spi.IMessagesStore.Message;
 import io.moquette.spi.IMessagesStore.StoredMessage;
 import io.moquette.spi.ISubscriptionsStore.ClientTopicCouple;
 import io.moquette.spi.impl.subscriptions.Subscription;
@@ -40,7 +41,7 @@ public abstract class MessageStoreTCK {
         Subscription sub = new Subscription("clientId", new Topic("/topic"), MqttQoS.AT_LEAST_ONCE);
 
         // Verify the message store for session is empty.
-        Map<Subscription, Collection<StoredMessage>> storedPublish = messagesStore.searchMatching(Arrays.asList(sub));
+        Map<Subscription, Collection<Message>> storedPublish = messagesStore.searchMatching(Arrays.asList(sub));
         assertEquals("The stored retained message must be present after client's session drop",
                 storedPublish.get(sub).isEmpty(), false);
     }
@@ -55,7 +56,7 @@ public abstract class MessageStoreTCK {
         Subscription sub = new Subscription("clientId", new Topic("/topic"), MqttQoS.AT_LEAST_ONCE);
 
         //Verify the message is in the store
-        StoredMessage msgRetrieved = messagesStore.searchMatching(Arrays.asList(sub)).get(sub).iterator().next();
+        Message msgRetrieved = messagesStore.searchMatching(Arrays.asList(sub)).get(sub).iterator().next();
 
         final ByteBuf payload = msgRetrieved.getPayload();
         byte[] content = new byte[payload.readableBytes()];

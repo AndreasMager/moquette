@@ -16,6 +16,7 @@
 
 package io.moquette.spi;
 
+import io.moquette.spi.IMessagesStore.Message;
 import io.moquette.spi.IMessagesStore.StoredMessage;
 
 import java.util.Collection;
@@ -55,7 +56,7 @@ public interface ISessionsStore {
      */
     Collection<ClientSession> getAllSessions();
 
-    StoredMessage inFlightAck(String clientID, int messageID);
+    Message inFlightAck(String clientID, int messageID);
 
     /**
      * Save the message msg with  messageID, clientID as in flight
@@ -67,7 +68,7 @@ public interface ISessionsStore {
      * @param msg
      *            the message to put in flight zone
      */
-    void inFlight(String clientID, int messageID, StoredMessage msg);
+    void inFlight(String clientID, int messageID, Message msg);
 
     /**
      * Return the next valid packetIdentifier for the given client session.
@@ -89,7 +90,7 @@ public interface ISessionsStore {
 
     void dropQueue(String clientID);
 
-    void moveInFlightToSecondPhaseAckWaiting(String clientID, int messageID, StoredMessage msg);
+    void moveInFlightToSecondPhaseAckWaiting(String clientID, int messageID, Message msg);
 
     /**
      * @param clientID
@@ -98,7 +99,7 @@ public interface ISessionsStore {
      *            the message ID that reached the second phase.
      * @return the guid of message just acked.
      */
-    StoredMessage secondPhaseAcknowledged(String clientID, int messageID);
+    Message secondPhaseAcknowledged(String clientID, int messageID);
 
     /**
      * Returns the number of inflight messages for the given client ID

@@ -22,6 +22,7 @@ import io.moquette.server.ConnectionDescriptor;
 import io.moquette.server.ConnectionDescriptorStore;
 import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.*;
+import io.moquette.spi.IMessagesStore.Message;
 import io.moquette.spi.IMessagesStore.StoredMessage;
 import io.moquette.spi.impl.subscriptions.ISubscriptionsDirectory;
 import io.moquette.spi.impl.subscriptions.Subscription;
@@ -469,7 +470,7 @@ public class ProtocolProcessor {
         LOG.trace("retrieving inflight for messageID <{}>", messageID);
 
         ClientSession targetSession = m_sessionsStore.sessionForClient(clientID);
-        StoredMessage inflightMsg = targetSession.inFlightAcknowledged(messageID);
+        Message inflightMsg = targetSession.inFlightAcknowledged(messageID);
 
         String topic = inflightMsg.getTopic();
         InterceptAcknowledgedMessage wrapped = new InterceptAcknowledgedMessage(inflightMsg, topic, username, messageID);
@@ -596,7 +597,7 @@ public class ProtocolProcessor {
         ClientSession targetSession = m_sessionsStore.sessionForClient(clientID);
         // remove from the inflight and move to the QoS2 second phase queue
         int messageID = messageId(msg);
-        StoredMessage ackedMsg = targetSession.inFlightAcknowledged(messageID);
+        Message ackedMsg = targetSession.inFlightAcknowledged(messageID);
         targetSession.moveInFlightToSecondPhaseAckWaiting(messageID, ackedMsg);
         // once received a PUBREC reply with a PUBREL(messageID)
         LOG.debug("Processing PUBREC message. CId={}, messageId={}", clientID, messageID);
@@ -612,7 +613,7 @@ public class ProtocolProcessor {
         LOG.debug("Processing PUBCOMP message. CId={}, messageId={}", clientID, messageID);
         // once received the PUBCOMP then remove the message from the temp memory
         ClientSession targetSession = m_sessionsStore.sessionForClient(clientID);
-        StoredMessage inflightMsg = targetSession.secondPhaseAcknowledged(messageID);
+        Message inflightMsg = targetSession.secondPhaseAcknowledged(messageID);
         String username = NettyUtils.userName(channel);
         String topic = inflightMsg.getTopic();
         m_interceptor
@@ -885,7 +886,7 @@ public class ProtocolProcessor {
 
     private void publishRetainedMessagesInSession(List<Subscription> newSubscriptions, String username) {
         //scans retained messages to be published to the new subscription
-        Map<Subscription, Collection<IMessagesStore.StoredMessage>> pairs =
+        Map<Subscription, Collection<IMessagesStore.Message>> pairs =
                 m_messagesStore.searchMatching(newSubscriptions);
 
         pairs.forEach((sub, messages) -> {

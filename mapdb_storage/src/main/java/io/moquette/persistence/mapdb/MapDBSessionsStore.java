@@ -18,6 +18,7 @@ package io.moquette.persistence.mapdb;
 
 import io.moquette.persistence.PersistentSession;
 import io.moquette.spi.ClientSession;
+import io.moquette.spi.IMessagesStore.Message;
 import io.moquette.spi.IMessagesStore.StoredMessage;
 import io.moquette.spi.ISessionsStore;
 import io.moquette.spi.ISubscriptionsStore;
@@ -39,12 +40,12 @@ class MapDBSessionsStore implements ISessionsStore, ISubscriptionsStore {
     private static final Logger LOG = LoggerFactory.getLogger(MapDBSessionsStore.class);
 
     // maps clientID->[MessageId -> msg]
-    private ConcurrentMap<String, ConcurrentMap<Integer, StoredMessage>> outboundFlightMessages;
+    private ConcurrentMap<String, ConcurrentMap<Integer, Message>> outboundFlightMessages;
     // map clientID <-> set of currently in flight packet identifiers
     private Map<String, Set<Integer>> m_inFlightIds;
     private ConcurrentMap<String, PersistentSession> m_persistentSessions;
     // maps clientID->[MessageId -> guid]
-    private ConcurrentMap<String, ConcurrentMap<Integer, StoredMessage>> m_secondPhaseStore;
+    private ConcurrentMap<String, ConcurrentMap<Integer, Message>> m_secondPhaseStore;
 
     private final DB m_db;
 
@@ -205,14 +206,14 @@ class MapDBSessionsStore implements ISessionsStore, ISubscriptionsStore {
     }
 
     @Override
-    public StoredMessage inFlightAck(String clientID, int messageID) {
+    public Message inFlightAck(String clientID, int messageID) {
         LOG.debug("Acknowledging inflight message CId={}, messageId={}", clientID, messageID);
-        ConcurrentMap<Integer, StoredMessage> m = this.outboundFlightMessages.get(clientID);
+        ConcurrentMap<Integer, Message> m = this.outboundFlightMessages.get(clientID);
         if (m == null) {
             LOG.error("Can't find the inFlight record for client <{}>", clientID);
             throw new RuntimeException("Can't find the inFlight record for client <" + clientID + ">");
         }
-        StoredMessage msg = m.remove(messageID);
+        Message msg = m.remove(messageID);
         this.outboundFlightMessages.put(clientID, m);
 
         // remove from the ids store
@@ -224,8 +225,8 @@ class MapDBSessionsStore implements ISessionsStore, ISubscriptionsStore {
     }
 
     @Override
-    public void inFlight(String clientID, int messageID, StoredMessage msg) {
-        ConcurrentMap<Integer, StoredMessage> messages = outboundFlightMessages.get(clientID);
+    public void inFlight(String clientID, int messageID, Message msg) {
+        ConcurrentMap<Integer, Message> messages = outboundFlightMessages.get(clientID);
         if (messages == null) {
             messages = new ConcurrentHashMap<>();
         }
@@ -246,9 +247,9 @@ class MapDBSessionsStore implements ISessionsStore, ISubscriptionsStore {
     }
 
     @Override
-    public void moveInFlightToSecondPhaseAckWaiting(String clientID, int messageID, StoredMessage msg) {
+    public void moveInFlightToSecondPhaseAckWaiting(String clientID, int messageID, Message msg) {
         LOG.debug("Moving inflight message to 2nd phase ack state. CId={}, messageID={}", clientID, messageID);
-        ConcurrentMap<Integer, StoredMessage> m = this.m_secondPhaseStore.get(clientID);
+        ConcurrentMap<Integer, Message> m = this.m_secondPhaseStore.get(clientID);
         if (m == null) {
             String error = String.format("Can't find the inFlight record for client <%s> during the second phase of " +
                 "QoS2 pub", clientID);
@@ -260,9 +261,9 @@ class MapDBSessionsStore implements ISessionsStore, ISubscriptionsStore {
     }
 
     @Override
-    public StoredMessage secondPhaseAcknowledged(String clientID, int messageID) {
+    public Message secondPhaseAcknowledged(String clientID, int messageID) {
         LOG.debug("Processing second phase ACK CId={}, messageId={}", clientID, messageID);
-        final ConcurrentMap<Integer, StoredMessage> m = this.m_secondPhaseStore.get(clientID);
+        final ConcurrentMap<Integer, Message> m = this.m_secondPhaseStore.get(clientID);
         if (m == null) {
             String error = String.format("Can't find the inFlight record for client <%s> during the second phase " +
                 "acking of QoS2 pub", clientID);
@@ -270,7 +271,7 @@ class MapDBSessionsStore implements ISessionsStore, ISubscriptionsStore {
             throw new RuntimeException(error);
         }
 
-        StoredMessage msg = m.remove(messageID);
+        Message msg = m.remove(messageID);
         m_secondPhaseStore.put(clientID, m);
         return msg;
     }
@@ -283,12 +284,12 @@ class MapDBSessionsStore implements ISessionsStore, ISubscriptionsStore {
             totalInflight += inflightPerClient.size();
         }
 
-        Map<Integer, StoredMessage> secondPhaseInFlight = this.m_secondPhaseStore.get(clientID);
+        Map<Integer, Message> secondPhaseInFlight = this.m_secondPhaseStore.get(clientID);
         if (secondPhaseInFlight != null) {
             totalInflight += secondPhaseInFlight.size();
         }
 
-        Map<Integer, StoredMessage> outboundPerClient = outboundFlightMessages.get(clientID);
+        Map<Integer, Message> outboundPerClient = outboundFlightMessages.get(clientID);
         if (outboundPerClient != null) {
             totalInflight += outboundPerClient.size();
         }

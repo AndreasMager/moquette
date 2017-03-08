@@ -39,7 +39,7 @@ class MapDBMessagesStore implements IMessagesStore {
 
     private DB m_db;
 
-    private ConcurrentMap<Topic, StoredMessage> m_retainedStore;
+    private ConcurrentMap<Topic, Message> m_retainedStore;
 
     MapDBMessagesStore(DB db) {
         m_db = db;
@@ -52,13 +52,13 @@ class MapDBMessagesStore implements IMessagesStore {
     }
 
     @Override
-    public Map<Subscription, Collection<StoredMessage>> searchMatching(List<Subscription> newSubscriptions) {
+    public Map<Subscription, Collection<Message>> searchMatching(List<Subscription> newSubscriptions) {
         LOG.debug("Scanning retained messages");
-        Map<Subscription, Collection<StoredMessage>> results = HashColletions.createHashMap(newSubscriptions.size());
+        Map<Subscription, Collection<Message>> results = HashColletions.createHashMap(newSubscriptions.size());
 
         for (Subscription sub : newSubscriptions) {
-            for (Map.Entry<Topic, StoredMessage> entry : m_retainedStore.entrySet()) {
-                StoredMessage storedMsg = entry.getValue();
+            for (Map.Entry<Topic, Message> entry : m_retainedStore.entrySet()) {
+                Message storedMsg = entry.getValue();
 
                 //TODO this is ugly, it does a linear scan on potential big dataset
                 if (entry.getKey().match(sub.getTopicFilter())) {
@@ -82,11 +82,8 @@ class MapDBMessagesStore implements IMessagesStore {
     }
 
     @Override
-    public void storeRetained(Topic topic, StoredMessage storedMessage) {
-        LOG.debug("Store retained message for topic={}, CId={}", topic, storedMessage.getClientID());
-        if (storedMessage.getClientID() == null) {
-            throw new IllegalArgumentException( "Message to be persisted must have a not null client ID");
-        }
+    public void storeRetained(Topic topic, Message storedMessage) {
+        LOG.debug("Store retained message for topic={}", topic);
         m_retainedStore.put(topic, storedMessage);
     }
 }

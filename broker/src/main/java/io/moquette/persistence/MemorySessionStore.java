@@ -18,6 +18,7 @@ package io.moquette.persistence;
 
 import io.moquette.server.Constants;
 import io.moquette.spi.ClientSession;
+import io.moquette.spi.IMessagesStore.Message;
 import io.moquette.spi.IMessagesStore.StoredMessage;
 import io.moquette.spi.ISessionsStore;
 import io.moquette.spi.ISubscriptionsStore;
@@ -42,9 +43,9 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
         final Map<Topic, Subscription> subscriptions = new ConcurrentHashMap<>();
         final AtomicReference<PersistentSession> persistentSession = new AtomicReference<>(null);
         final BlockingQueue<StoredMessage> queue = new ArrayBlockingQueue<>(Constants.MAX_MESSAGE_QUEUE);
-        final Map<Integer, StoredMessage> secondPhaseStore = new ConcurrentHashMap<>();
-        final Map<Integer, StoredMessage> outboundFlightMessages =
-                Collections.synchronizedMap(new HashMap<Integer, StoredMessage>());
+        final Map<Integer, Message> secondPhaseStore = new ConcurrentHashMap<>();
+        final Map<Integer, Message> outboundFlightMessages =
+                Collections.synchronizedMap(new HashMap<Integer, Message>());
         final Map<Integer, StoredMessage> inboundFlightMessages = new ConcurrentHashMap<>();
 
         Session(String clientID, ClientSession clientSession) {
@@ -138,9 +139,7 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
     @Override
     public Collection<ClientSession> getAllSessions() {
         Collection<ClientSession> result = new ArrayList<>();
-        for (Session entry : sessions.values()) {
-            result.add(new ClientSession(entry.clientID, this, this, entry.persistentSession.get().cleanSession));
-        }
+        sessions.forEach((k, v) -> result.add(new ClientSession(k, this, this, v.clientSession.isCleanSession())));
         return result;
     }
 
@@ -157,11 +156,9 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
     @Override
     public List<ClientTopicCouple> listAllSubscriptions() {
         List<ClientTopicCouple> allSubscriptions = new ArrayList<>();
-        for (Session entry : sessions.values()) {
-            for (Subscription sub : entry.subscriptions.values()) {
-                allSubscriptions.add(sub.asClientTopicCouple());
-            }
-        }
+        sessions.forEach((k, v) ->
+                            v.subscriptions.forEach((t, sub) ->
+                                allSubscriptions.add(sub.asClientTopicCouple())));
         return allSubscriptions;
     }
 
@@ -174,28 +171,26 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
         }
 
         Map<Topic, Subscription> subscriptions = sessions.get(clientID).subscriptions;
-        if (subscriptions == null || subscriptions.isEmpty()) {
+        if (subscriptions == null || subscriptions.isEmpty())
             return null;
-        }
+
         return subscriptions.get(couple.topicFilter);
     }
 
     @Override
     public List<Subscription> getSubscriptions() {
         List<Subscription> subscriptions = new ArrayList<>();
-        for (Session entry : sessions.values()) {
-            subscriptions.addAll(entry.subscriptions.values());
-        }
+        sessions.forEach((k, v) -> subscriptions.addAll(v.subscriptions.values()));
         return subscriptions;
     }
 
     @Override
-    public StoredMessage inFlightAck(String clientID, int messageID) {
+    public Message inFlightAck(String clientID, int messageID) {
         return getSession(clientID).outboundFlightMessages.remove(messageID);
     }
 
     @Override
-    public void inFlight(String clientID, int messageID, StoredMessage msg) {
+    public void inFlight(String clientID, int messageID, Message msg) {
         Session session = sessions.get(clientID);
         if (session == null) {
             LOG.error("Can't find the session for client <{}>", clientID);
@@ -215,7 +210,7 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
             return -1;
         }
 
-        Map<Integer, StoredMessage> m = sessions.get(clientID).outboundFlightMessages;
+        Map<Integer, Message> m = sessions.get(clientID).outboundFlightMessages;
         int maxId = m.keySet().isEmpty() ? 0 : Collections.max(m.keySet());
         int nextPacketId = (maxId + 1) % 0xFFFF;
         m.put(nextPacketId, null);
@@ -238,7 +233,7 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
     }
 
     @Override
-    public void moveInFlightToSecondPhaseAckWaiting(String clientID, int messageID, StoredMessage msg) {
+    public void moveInFlightToSecondPhaseAckWaiting(String clientID, int messageID, Message msg) {
         LOG.info("Moving msg inflight second phase store, clientID <{}> messageID {}", clientID, messageID);
         Session session = sessions.get(clientID);
         if (session == null) {
@@ -251,7 +246,7 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
     }
 
     @Override
-    public StoredMessage secondPhaseAcknowledged(String clientID, int messageID) {
+    public Message secondPhaseAcknowledged(String clientID, int messageID) {
         LOG.info("Acknowledged message in second phase, clientID <{}> messageID {}", clientID, messageID);
         return getSession(clientID).secondPhaseStore.remove(messageID);
     }

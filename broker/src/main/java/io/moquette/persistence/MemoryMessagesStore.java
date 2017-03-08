@@ -16,20 +16,21 @@
 
 package io.moquette.persistence;
 
-import io.moquette.spi.IMessagesStore;
 import io.moquette.HashColletions;
 import io.moquette.spi.impl.subscriptions.Subscription;
 import io.moquette.spi.impl.subscriptions.Topic;
+import io.moquette.spi.IMessagesStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MemoryMessagesStore implements IMessagesStore {
 
     private static final Logger LOG = LoggerFactory.getLogger(MemoryMessagesStore.class);
 
-    private Map<Topic, StoredMessage> m_retainedStore = new HashMap<>();
+    private Map<Topic, Message> m_retainedStore = new ConcurrentHashMap<>();
 
     MemoryMessagesStore() {
     }
@@ -39,18 +40,15 @@ public class MemoryMessagesStore implements IMessagesStore {
     }
 
     @Override
-    public void storeRetained(Topic topic, StoredMessage storedMessage) {
-        LOG.debug("Store retained message for topic={}, CId={}", topic, storedMessage.getClientID());
-        if (storedMessage.getClientID() == null) {
-            throw new IllegalArgumentException( "Message to be persisted must have a not null client ID");
-        }
+    public void storeRetained(Topic topic, Message storedMessage) {
+        LOG.debug("Store retained message for topic={}", topic);
         m_retainedStore.put(topic, storedMessage);
     }
 
     @Override
-    public Map<Subscription, Collection<StoredMessage>> searchMatching(List<Subscription> newSubscriptions) {
+    public Map<Subscription, Collection<Message>> searchMatching(List<Subscription> newSubscriptions) {
         LOG.debug("Scanning retained messages...");
-        Map<Subscription, Collection<StoredMessage>> results = HashColletions.createHashMap(newSubscriptions.size());
+        Map<Subscription, Collection<Message>> results = HashColletions.createHashMap(newSubscriptions.size());
 
         for (Subscription sub : newSubscriptions) {
             m_retainedStore.forEach((topic, storedMsg) -> {

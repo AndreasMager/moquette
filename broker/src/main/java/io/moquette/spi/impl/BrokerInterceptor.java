@@ -165,8 +165,8 @@ final class BrokerInterceptor implements Interceptor {
     @Override
     public void notifyMessageAcknowledged(final InterceptAcknowledgedMessage msg) {
         for (final InterceptHandler handler : this.handlers.get(InterceptAcknowledgedMessage.class)) {
-            LOG.debug("Notifying MQTT ACK message to interceptor. CId={}, messageId={}, topic={}, interceptorId={}",
-                msg.getMsg().getClientID(), msg.getPacketID(), msg.getTopic(), handler.getID());
+            LOG.debug("Notifying MQTT ACK message to interceptor. messageId={}, topic={}, interceptorId={}",
+                msg.getPacketID(), msg.getTopic(), handler.getID());
             executor.execute(() -> handler.onMessageAcknowledged(msg));
         }
     }
