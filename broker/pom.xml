@@ -93,6 +93,13 @@
             <version>3.5.4</version>
         </dependency>
 
+        <!-- https://mvnrepository.com/artifact/commons-daemon/commons-daemon -->
+        <dependency>
+            <groupId>commons-daemon</groupId>
+            <artifactId>commons-daemon</artifactId>
+            <version>1.0.15</version>
+        </dependency>
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>junit</groupId>

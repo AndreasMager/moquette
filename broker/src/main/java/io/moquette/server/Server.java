@@ -37,6 +37,8 @@ import io.moquette.spi.security.IAuthenticator;
 import io.moquette.spi.security.IAuthorizator;
 import io.moquette.spi.security.ISslContextCreator;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
+import org.apache.commons.daemon.Daemon;
+import org.apache.commons.daemon.DaemonContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.File;
@@ -52,7 +54,7 @@ import static io.moquette.logging.LoggingUtils.getInterceptorIds;
  *
  * @author andrea
  */
-public class Server {
+public class Server implements Daemon {
 
     private static final Logger LOG = LoggerFactory.getLogger(Server.class);
 
@@ -68,32 +70,20 @@ public class Server {
 
     private ProtocolProcessorBootstrapper m_processorBootstrapper;
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws Exception {
         final Server server = new Server();
-        server.startServer();
+        server.init(null);
+        server.start();
+
         System.out.println("Server started, version 0.10-SNAPSHOT");
         // Bind a shutdown hook
         Runtime.getRuntime().addShutdownHook(new Thread() {
 
             @Override
             public void run() {
-                server.stopServer();
+                server.stop();
             }
         });
-    }
-
-    /**
-     * Starts Moquette bringing the configuration from the file located at m_config/moquette.conf
-     *
-     * @throws IOException
-     *             in case of any IO error.
-     */
-    public void startServer() throws IOException {
-        File defaultConfigurationFile = defaultConfigFile();
-        LOG.info("Starting Moquette server. Configuration file path = {}.", defaultConfigurationFile.getAbsolutePath());
-        IResourceLoader filesystemLoader = new FileResourceLoader(defaultConfigurationFile);
-        final IConfig config = new ResourceLoaderConfig(filesystemLoader);
-        startServer(config);
     }
 
     private static File defaultConfigFile() {
@@ -257,20 +247,7 @@ public class Server {
     }
 
     public void stopServer() {
-        LOG.info("Unbinding server from the configured ports...");
-        m_acceptor.close();
-        LOG.info("Stopping MQTT protocol processor...");
-        m_processorBootstrapper.shutdown();
-        m_initialized = false;
-        if (hazelcastInstance != null) {
-            LOG.info("Stopping embedded Hazelcast instance...");
-            try {
-                hazelcastInstance.shutdown();
-            } catch (HazelcastInstanceNotActiveException e) {
-                LOG.warn("The embedded Hazelcast instance is already shut down.");
-            }
-        }
-        LOG.info("The Moquette server has been stopped.");
+        stop();
     }
 
     /**
@@ -329,4 +306,38 @@ public class Server {
         return m_processorBootstrapper.getConnectionDescriptors();
     }
 
+    @Override
+    public void init(DaemonContext context) {
+    }
+
+    @Override
+    public void start() throws IOException {
+        File defaultConfigurationFile = defaultConfigFile();
+        LOG.info("Starting Moquette server. Configuration file path = {}.", defaultConfigurationFile.getAbsolutePath());
+        IResourceLoader filesystemLoader = new FileResourceLoader(defaultConfigurationFile);
+        final IConfig config = new ResourceLoaderConfig(filesystemLoader);
+        startServer(config);
+    }
+
+    @Override
+    public void stop() {
+        LOG.info("Unbinding server from the configured ports...");
+        m_acceptor.close();
+        LOG.info("Stopping MQTT protocol processor...");
+        m_processorBootstrapper.shutdown();
+        m_initialized = false;
+        if (hazelcastInstance != null) {
+            LOG.info("Stopping embedded Hazelcast instance...");
+            try {
+                hazelcastInstance.shutdown();
+            } catch (HazelcastInstanceNotActiveException e) {
+                LOG.warn("The embedded Hazelcast instance is already shut down.");
+            }
+        }
+        LOG.info("The Moquette server has been stopped.");
+    }
+
+    @Override
+    public void destroy() {
+    }
 }

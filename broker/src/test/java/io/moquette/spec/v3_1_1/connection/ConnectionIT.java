@@ -39,7 +39,7 @@ public class ConnectionIT {
 
     protected void startServer() throws IOException {
         m_server = new Server();
-        m_server.startServer();
+        m_server.start();
     }
 
     @Before
