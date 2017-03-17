@@ -806,6 +806,11 @@ public class ProtocolProcessor {
         // fire the persisted messages in session
         publishRetainedMessagesInSession(newSubscriptions, username);
 
+        for (Subscription sub : newSubscriptions) {
+            //notify the Observables
+            m_interceptor.notifyTopicSubscribed(sub, username);
+        }
+
         boolean success = this.subscriptionInCourse.remove(executionKey, SubscriptionState.STORED);
         if (!success) {
             LOG.warn("Unable to perform the final subscription state update CId={}, messageId={}", clientID, messageID);
@@ -900,9 +905,6 @@ public class ProtocolProcessor {
 
             ClientSession targetSession = m_sessionsStore.sessionForClient(sub.getClientId());
             this.internalRepublisher.publishRetained(targetSession, messages);
-
-            //notify the Observables
-            m_interceptor.notifyTopicSubscribed(sub, username);
         });
     }
 
