@@ -36,7 +36,10 @@ public abstract class AbstractInterceptHandler implements InterceptHandler {
 
     private final String id;
 
+    protected final Server server;
+
     public AbstractInterceptHandler(Server server) {
+        this.server = server;
         this.hz = server.getHazelcastInstance();
         this.id = HazelcastInterceptHandler.class.getName() + "@" + hz.getName();
     }
@@ -74,7 +77,7 @@ public abstract class AbstractInterceptHandler implements InterceptHandler {
     @Override
     public void onUnsubscribe(InterceptUnsubscribeMessage msg) {
     }
-    
+
     @Override
     public void onWipeSubscriptions(WipeSubscriptionsMessage wipeSubscriptionsMessage) {
     }
