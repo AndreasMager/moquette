@@ -70,6 +70,8 @@ public class Server {
 
     private IConfig config;
 
+    private boolean globalDatabase;
+
     public static void main(String[] args) throws IOException {
         final Server server = new Server();
         server.startServer();
@@ -338,5 +340,19 @@ public class Server {
 
     public IConfig getConfig() {
         return config;
+    }
+
+    /**
+     * true if you use a global database for retain messages
+     */
+    public boolean isGlobalDatabase() {
+        return globalDatabase;
+    }
+
+    /**
+     * Set this to true if you use a global database for retain messages
+     */
+    public void setGlobalDatabase(boolean globalDatabase) {
+        this.globalDatabase = globalDatabase;
     }
 }
