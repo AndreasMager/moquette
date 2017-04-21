@@ -35,7 +35,6 @@ import io.netty.handler.codec.mqtt.*;
 import io.netty.handler.timeout.IdleStateHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -58,37 +57,6 @@ import static io.moquette.server.ConnectionDescriptor.ConnectionState.*;
  * Used by the front facing class ProtocolProcessorBootstrapper.
  */
 public class ProtocolProcessor {
-
-    static final class WillMessage {
-
-        private final String topic;
-        private final ByteBuffer payload;
-        private final boolean retained;
-        private final MqttQoS qos;
-
-        WillMessage(String topic, ByteBuffer payload, boolean retained, MqttQoS qos) {
-            this.topic = topic;
-            this.payload = payload;
-            this.retained = retained;
-            this.qos = qos;
-        }
-
-        public String getTopic() {
-            return topic;
-        }
-
-        public ByteBuffer getPayload() {
-            return payload;
-        }
-
-        public boolean isRetained() {
-            return retained;
-        }
-
-        public MqttQoS getQos() {
-            return qos;
-        }
-    }
 
     private enum SubscriptionState {
         STORED, VERIFIED
@@ -150,7 +118,7 @@ public class ProtocolProcessor {
     private InternalRepublisher internalRepublisher;
 
     // maps clientID to Will testament, if specified on CONNECT
-    private ConcurrentMap<String, WillMessage> m_willStore = new ConcurrentHashMap<>();
+    private ConcurrentMap<String, StoredMessage> m_willStore = new ConcurrentHashMap<>();
 
     ProtocolProcessor() {
     }
@@ -392,10 +360,10 @@ public class ProtocolProcessor {
             LOG.info("Configuring MQTT last will and testament CId={}, willQos={}, willTopic={}, willRetain={}",
                     clientId, willQos, msg.payload().willTopic(), msg.variableHeader().isWillRetain());
             byte[] willPayload = msg.payload().willMessage().getBytes();
-            ByteBuffer bb = (ByteBuffer) ByteBuffer.allocate(willPayload.length).put(willPayload).flip();
             // save the will testament in the clientID store
-            WillMessage will = new WillMessage(msg.payload().willTopic(), bb, msg.variableHeader().isWillRetain(),
-                    willQos);
+            StoredMessage will = new StoredMessage(willPayload, willQos, msg.payload().willTopic());
+            will.setRetained(msg.variableHeader().isWillRetain());
+            will.setClientID(clientId);
             m_willStore.put(clientId, will);
             LOG.info("MQTT last will and testament has been configured. CId={}", clientId);
         }
@@ -487,13 +455,6 @@ public class ProtocolProcessor {
         return stored;
     }
 
-    private static IMessagesStore.StoredMessage asStoredMessage(WillMessage will) {
-        IMessagesStore.StoredMessage pub = new IMessagesStore.StoredMessage(will.getPayload().array(), will.getQos(),
-                will.getTopic());
-        pub.setRetained(will.isRetained());
-        return pub;
-    }
-
     public void processPublish(Channel channel, MqttPublishMessage msg) {
         final MqttQoS qos = msg.fixedHeader().qosLevel();
         final String clientId = NettyUtils.clientID(channel);
@@ -563,16 +524,14 @@ public class ProtocolProcessor {
     /**
      * Specialized version to publish will testament message.
      */
-    private void forwardPublishWill(WillMessage will, String clientID) {
+    private void forwardPublishWill(StoredMessage will, String clientID) {
         // it has just to publish the message downstream to the subscribers
         // NB it's a will publish, it needs a PacketIdentifier for this conn, default to 1
-        IMessagesStore.StoredMessage tobeStored = asStoredMessage(will);
-        tobeStored.setClientID(clientID);
-        Topic topic = new Topic(tobeStored.getTopic());
+        Topic topic = new Topic(will.getTopic());
         List<Subscription> topicMatchingSubscriptions = subscriptions.matches(topic);
 
         LOG.info("Publishing will message. CId={}, topic={}", clientID, topic);
-        this.messagesPublisher.publish2Subscribers(tobeStored, topicMatchingSubscriptions);
+        this.messagesPublisher.publish2Subscribers(will, topicMatchingSubscriptions);
     }
 
     static MqttQoS lowerQosToTheSubscriptionDesired(Subscription sub, MqttQoS qos) {
@@ -721,7 +680,7 @@ public class ProtocolProcessor {
         connectionDescriptors.removeConnection(oldConnDescr);
         // publish the Will message (if any) for the clientID
         if (m_willStore.containsKey(clientID)) {
-            WillMessage will = m_willStore.get(clientID);
+            StoredMessage will = m_willStore.get(clientID);
             forwardPublishWill(will, clientID);
             m_willStore.remove(clientID);
         }
