@@ -100,6 +100,7 @@ public class ProtocolProcessorBootstrapper {
         m_sessionsStore = store.sessionsStore();
         this.subscriptionsStore = m_sessionsStore.subscriptionStore();
         storeShutdown = () -> store.close();
+        server.setGlobalDatabase(Boolean.parseBoolean(props.getProperty(BrokerConstants.STORAGE_CLASS_TYPE, "false")));
 
         LOG.info("Configuring message interceptors...");
 
