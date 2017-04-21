@@ -26,7 +26,6 @@ import io.netty.handler.codec.mqtt.MqttPublishVariableHeader;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import static io.moquette.spi.impl.ProtocolProcessor.asStoredMessage;
 import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 
 class PersistentQueueMessageSender {
@@ -39,46 +38,41 @@ class PersistentQueueMessageSender {
     }
 
     public void sendPublish(ClientSession session, StoredMessage msg, MqttQoS qos, boolean retained) {
-        MqttPublishVariableHeader varHeader;
+        String clientId = session.clientID;
+        String topic = msg.getTopic();
+
+        int messageId;
         if (qos != MqttQoS.AT_MOST_ONCE) {
-            LOG.debug("Adding message to inflight zone. ClientId={}, topic={}", session.clientID,
+            LOG.debug("Adding message to inflight zone. ClientId={}, topic={}", clientId,
                 msg.getTopic());
-            int packetID = session.inFlightAckWaiting(msg.getGuid());
-
             // set the PacketIdentifier only for QoS > 0
-
-            varHeader = new MqttPublishVariableHeader(msg.getTopic(), packetID);
+            messageId = session.inFlightAckWaiting(msg.getGuid());
         } else {
-            varHeader = new MqttPublishVariableHeader(msg.getTopic(), 0);
+            messageId = 0;
         }
+
+        MqttPublishVariableHeader varHeader = new MqttPublishVariableHeader(topic, messageId);
 
         MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBLISH, false, qos, retained, 0);
         MqttPublishMessage pubMessage = new MqttPublishMessage(fixedHeader, varHeader, msg.getMessage());
 
-        sendPublish(session, pubMessage);
-    }
-
-    private void sendPublish(ClientSession clientsession, MqttPublishMessage pubMessage) {
-        String clientId = clientsession.clientID;
-        final int messageId = pubMessage.variableHeader().messageId();
-        final String topicName = pubMessage.variableHeader().topicName();
         if (LOG.isDebugEnabled()) {
             LOG.debug("Sending PUBLISH message. MessageId={}, CId={}, topic={}, qos={}, payload={}", messageId,
-                clientId, topicName, DebugUtils.payload2Str(pubMessage.payload()));
+                clientId, topic, new String(msg.getPayload().array()));
         } else {
-            LOG.info("Sending PUBLISH message. MessageId={}, CId={}, topic={}", messageId, clientId, topicName);
+            LOG.info("Sending PUBLISH message. MessageId={}, CId={}, topic={}", messageId, clientId, topic);
         }
 
+        // TODO Use ChannelFuture
         boolean messageDelivered = connectionDescriptorStore.sendMessage(pubMessage, messageId, clientId);
 
-        MqttQoS qos = pubMessage.fixedHeader().qosLevel();
-        if (!messageDelivered && qos != AT_MOST_ONCE && !clientsession.isCleanSession()) {
+        if (!messageDelivered && qos != AT_MOST_ONCE && !session.isCleanSession()) {
             LOG.warn("PUBLISH message could not be delivered. It will be stored. MessageId={}, CId={}, topic={}, "
-                    + "qos={}, cleanSession={}", messageId, clientId, topicName, qos, false);
-            clientsession.enqueue(asStoredMessage(pubMessage));
+                    + "qos={}, cleanSession={}", messageId, clientId, topic, qos, false);
+            session.enqueue(msg);
         } else {
             LOG.warn("PUBLISH message could not be delivered. It will be discarded. MessageId={}, CId={}, topic={}, " +
-                "qos={}, cleanSession={}", messageId, clientId, topicName, qos, true);
+                "qos={}, cleanSession={}", messageId, clientId, topic, qos, true);
         }
     }
 }
