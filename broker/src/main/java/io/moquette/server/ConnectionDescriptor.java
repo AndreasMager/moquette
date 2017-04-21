@@ -28,6 +28,7 @@ import io.moquette.server.netty.metrics.BytesMetricsHandler;
 import io.moquette.server.netty.metrics.MessageMetrics;
 import io.moquette.server.netty.metrics.MessageMetricsHandler;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 
 /**
  * Value object to maintain the information of single connection, like ClientID, Channel, and clean
@@ -61,8 +62,8 @@ public class ConnectionDescriptor {
         this.cleanSession = cleanSession;
     }
 
-    public void writeAndFlush(Object payload) {
-        this.channel.writeAndFlush(payload);
+    public ChannelFuture writeAndFlush(Object payload) {
+        return this.channel.writeAndFlush(payload);
     }
 
     public void setupAutoFlusher(int flushIntervalMs) {
