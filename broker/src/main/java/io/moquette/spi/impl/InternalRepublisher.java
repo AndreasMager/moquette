@@ -64,11 +64,13 @@ class InternalRepublisher {
             // put in flight zone
             LOG.debug("Adding message ot inflight zone. ClientId={}, guid={}, topic={}", clientSession.clientID,
                 pubEvt.getGuid(), pubEvt.getTopic());
-            int messageId = clientSession.inFlightAckWaiting(pubEvt.getGuid());
-            MqttPublishMessage publishMsg = notRetainedPublish(pubEvt);
-            // set the PacketIdentifier only for QoS > 0
-            if (publishMsg.fixedHeader().qosLevel() != MqttQoS.AT_MOST_ONCE) {
+            MqttPublishMessage publishMsg;
+            if (pubEvt.getQos() != MqttQoS.AT_MOST_ONCE) {
+                int messageId = clientSession.inFlightAckWaiting(pubEvt.getGuid());
+                // set the PacketIdentifier only for QoS > 0
                 publishMsg = notRetainedPublish(pubEvt, messageId);
+            } else {
+                publishMsg = notRetainedPublish(pubEvt);
             }
             this.messageSender.sendPublish(clientSession, publishMsg);
         }
