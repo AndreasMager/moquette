@@ -40,7 +40,7 @@ class InternalRepublisher {
     void publishRetained(ClientSession targetSession, Collection<IMessagesStore.StoredMessage> messages) {
         for (IMessagesStore.StoredMessage storedMsg : messages) {
             // fire as retained the message
-            MqttPublishMessage publishMsg = retainedPublish(storedMsg);
+            MqttPublishMessage publishMsg;
             if (storedMsg.getQos() != MqttQoS.AT_MOST_ONCE) {
                 LOG.debug("Adding message to inflight zone. ClientId={}, topic={}", targetSession.clientID,
                     storedMsg.getTopic());
@@ -48,6 +48,8 @@ class InternalRepublisher {
 
                 // set the PacketIdentifier only for QoS > 0
                 publishMsg = retainedPublish(storedMsg, packetID);
+            } else {
+                publishMsg = retainedPublish(storedMsg);
             }
 
             this.messageSender.sendPublish(targetSession, publishMsg);
