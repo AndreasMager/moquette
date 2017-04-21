@@ -20,7 +20,6 @@ import io.moquette.server.ConnectionDescriptorStore;
 import io.moquette.spi.ClientSession;
 import io.moquette.spi.IMessagesStore;
 import io.moquette.spi.ISessionsStore;
-import io.moquette.spi.MessageGUID;
 import io.moquette.spi.impl.subscriptions.Subscription;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.*;
@@ -57,15 +56,12 @@ class MessagesPublisher {
     }
 
     void publish2Subscribers(IMessagesStore.StoredMessage pubMsg, List<Subscription> topicMatchingSubscriptions) {
-        final String topic = pubMsg.getTopic();
         final MqttQoS publishingQos = pubMsg.getQos();
-        final ByteBuf origMessage = pubMsg.getMessage();
 
         // if QoS 1 or 2 store the message
         // TODO perhaps this block is not needed.
-        MessageGUID guid = null;
         if (publishingQos != MqttQoS.AT_MOST_ONCE) {
-            guid = m_messagesStore.storePublishForFuture(pubMsg);
+            m_messagesStore.storePublishForFuture(pubMsg);
         }
 
         for (final Subscription sub : topicMatchingSubscriptions) {
@@ -74,22 +70,8 @@ class MessagesPublisher {
 
             boolean targetIsActive = this.connectionDescriptors.isConnected(sub.getClientId());
 
-            // we need to retain because duplicate only copy r/w indexes and don't retain() causing
-            // refCnt = 0
-            ByteBuf message = origMessage.retainedDuplicate();
             if (targetIsActive) {
-                LOG.debug("Sending PUBLISH message to active subscriber. CId={}, topicFilter={}, qos={}",
-                    sub.getClientId(), sub.getTopicFilter(), qos);
-                MqttPublishMessage publishMsg;
-                if (qos != MqttQoS.AT_MOST_ONCE) {
-                    // QoS 1 or 2
-                    int messageId = targetSession.inFlightAckWaiting(guid);
-                    // set the PacketIdentifier only for QoS > 0
-                    publishMsg = notRetainedPublishWithMessageId(topic, qos, message, messageId);
-                } else {
-                    publishMsg = notRetainedPublish(topic, qos, message);
-                }
-                this.messageSender.sendPublish(targetSession, publishMsg);
+                this.messageSender.sendPublish(targetSession, pubMsg, qos, false);
             } else {
                 if (!targetSession.isCleanSession()) {
                     LOG.debug("Storing pending PUBLISH inactive message. CId={}, topicFilter={}, qos={}",

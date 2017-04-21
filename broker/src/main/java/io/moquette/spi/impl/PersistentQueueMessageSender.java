@@ -18,7 +18,11 @@ package io.moquette.spi.impl;
 
 import io.moquette.server.ConnectionDescriptorStore;
 import io.moquette.spi.ClientSession;
+import io.moquette.spi.IMessagesStore.StoredMessage;
+import io.netty.handler.codec.mqtt.MqttFixedHeader;
+import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
+import io.netty.handler.codec.mqtt.MqttPublishVariableHeader;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +38,27 @@ class PersistentQueueMessageSender {
         this.connectionDescriptorStore = connectionDescriptorStore;
     }
 
-    void sendPublish(ClientSession clientsession, MqttPublishMessage pubMessage) {
+    public void sendPublish(ClientSession session, StoredMessage msg, MqttQoS qos, boolean retained) {
+        MqttPublishVariableHeader varHeader;
+        if (qos != MqttQoS.AT_MOST_ONCE) {
+            LOG.debug("Adding message to inflight zone. ClientId={}, topic={}", session.clientID,
+                msg.getTopic());
+            int packetID = session.inFlightAckWaiting(msg.getGuid());
+
+            // set the PacketIdentifier only for QoS > 0
+
+            varHeader = new MqttPublishVariableHeader(msg.getTopic(), packetID);
+        } else {
+            varHeader = new MqttPublishVariableHeader(msg.getTopic(), 0);
+        }
+
+        MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBLISH, false, qos, retained, 0);
+        MqttPublishMessage pubMessage = new MqttPublishMessage(fixedHeader, varHeader, msg.getMessage());
+
+        sendPublish(session, pubMessage);
+    }
+
+    private void sendPublish(ClientSession clientsession, MqttPublishMessage pubMessage) {
         String clientId = clientsession.clientID;
         final int messageId = pubMessage.variableHeader().messageId();
         final String topicName = pubMessage.variableHeader().topicName();

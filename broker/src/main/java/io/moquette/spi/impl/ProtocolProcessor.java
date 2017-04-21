@@ -42,7 +42,6 @@ import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import static io.moquette.spi.impl.InternalRepublisher.createPublishForQos;
 import static io.moquette.spi.impl.Utils.messageId;
 import static io.moquette.spi.impl.Utils.readBytesAndRewind;
 import static io.netty.handler.codec.mqtt.MqttConnectReturnCode.*;
@@ -881,8 +880,11 @@ public class ProtocolProcessor {
             } else {
                 // recreate a publish from stored publish in queue
                 boolean retained = m_messagesStore.getMessageByGuid(msg.getGuid()) != null;
-                MqttPublishMessage pubMsg = createPublishForQos(msg.getTopic(), msg.getQos(), msg.getMessage(),
-                        retained, 0);
+                MqttFixedHeader fixedHeader = new MqttFixedHeader(MqttMessageType.PUBLISH, false, msg.getQos(), retained
+                        , 0);
+                MqttPublishVariableHeader varHeader = new MqttPublishVariableHeader(msg.getTopic(), 0);
+                MqttPublishMessage pubMsg = new MqttPublishMessage(fixedHeader, varHeader, msg.getMessage());
+
                 channel.write(pubMsg);
             }
         }
