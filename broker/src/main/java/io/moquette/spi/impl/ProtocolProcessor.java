@@ -528,7 +528,7 @@ public class ProtocolProcessor {
      * @param clientId
      *            the clientID
      */
-    public void internalPublish(MqttPublishMessage msg, final String clientId) {
+    public void internalPublish(MqttPublishMessage msg, final String clientId, boolean globalDatabase) {
         final MqttQoS qos = msg.fixedHeader().qosLevel();
         final Topic topic = new Topic(msg.variableHeader().topicName());
         LOG.info("Sending PUBLISH message. Topic={}, qos={}", topic, qos);
@@ -543,6 +543,9 @@ public class ProtocolProcessor {
 //            guid = m_messagesStore.storePublishForFuture(toStoreMsg);
 //        }
         this.messagesPublisher.publish2Subscribers(toStoreMsg, topic);
+
+        if (globalDatabase) // The retain message is already stored in the global database
+            return;
 
         if (!msg.fixedHeader().isRetain()) {
             return;
