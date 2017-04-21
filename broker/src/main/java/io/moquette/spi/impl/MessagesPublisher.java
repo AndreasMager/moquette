@@ -80,12 +80,14 @@ class MessagesPublisher {
             if (targetIsActive) {
                 LOG.debug("Sending PUBLISH message to active subscriber. CId={}, topicFilter={}, qos={}",
                     sub.getClientId(), sub.getTopicFilter(), qos);
-                MqttPublishMessage publishMsg = notRetainedPublish(topic, qos, message);
+                MqttPublishMessage publishMsg;
                 if (qos != MqttQoS.AT_MOST_ONCE) {
                     // QoS 1 or 2
                     int messageId = targetSession.inFlightAckWaiting(guid);
                     // set the PacketIdentifier only for QoS > 0
                     publishMsg = notRetainedPublishWithMessageId(topic, qos, message, messageId);
+                } else {
+                    publishMsg = notRetainedPublish(topic, qos, message);
                 }
                 this.messageSender.sendPublish(targetSession, publishMsg);
             } else {
