@@ -18,6 +18,7 @@ package io.moquette.server.netty;
 
 import io.moquette.spi.impl.ProtocolProcessor;
 import io.netty.channel.ChannelHandler.Sharable;
+import io.netty.buffer.ByteBufHolder;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.handler.codec.mqtt.*;
