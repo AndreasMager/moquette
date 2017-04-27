@@ -318,7 +318,7 @@ public class ProtocolProcessorTest extends AbstractProtocolProcessorCommonUtils 
 
         // Exercise
         // send a message that clean the previous retained publish
-        publishToAs("Publisher", FAKE_TOPIC, AT_MOST_ONCE, true);
+        publishToAs(m_channel, "Publisher", FAKE_TOPIC, AT_MOST_ONCE, true, new byte[0]);
 
         // Verify
         messages = m_messagesStore.searchMatching(

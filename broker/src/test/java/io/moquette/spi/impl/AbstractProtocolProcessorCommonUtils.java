@@ -165,7 +165,7 @@ abstract class AbstractProtocolProcessorCommonUtils {
             .retained(retained)
             .qos(qos)
             .payload(Unpooled.copiedBuffer(HELLO_WORLD_MQTT.getBytes())).build();
-        this.m_processor.internalPublish(publish, "INTRPUBL");
+        this.m_processor.internalPublish(publish, "INTRPUBL", true);
     }
 
     protected void publishToAs(String clientId, String topic, MqttQoS qos, boolean retained) {
@@ -173,12 +173,17 @@ abstract class AbstractProtocolProcessorCommonUtils {
     }
 
     protected void publishToAs(EmbeddedChannel channel, String clientId, String topic, MqttQoS qos, boolean retained) {
+        publishToAs(m_channel, clientId, topic, qos, retained, HELLO_WORLD_MQTT.getBytes());
+    }
+
+    protected void publishToAs(EmbeddedChannel channel, String clientId, String topic, MqttQoS qos, boolean retained,
+            byte[] msg) {
         NettyUtils.userName(channel, clientId);
         MqttPublishMessage publish = MqttMessageBuilders.publish()
             .topicName(topic)
             .retained(retained)
             .qos(qos)
-            .payload(Unpooled.copiedBuffer(HELLO_WORLD_MQTT.getBytes())).build();
+            .payload(Unpooled.copiedBuffer(msg)).build();
         this.m_processor.processPublish(m_channel, publish);
     }
 
