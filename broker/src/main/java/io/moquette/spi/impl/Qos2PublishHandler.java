@@ -98,6 +98,8 @@ class Qos2PublishHandler extends QosPublishHandler {
                 m_messagesStore.storeRetained(topic, guid);
             }
         }
+
+        // TODO move to processPubRel
         m_interceptor.notifyTopicPublished(msg, clientID, username);
     }
 
@@ -128,6 +130,7 @@ class Qos2PublishHandler extends QosPublishHandler {
         }
 
         sendPubComp(clientID, messageID);
+
     }
 
     private void sendPubRec(String clientID, int messageID) {
