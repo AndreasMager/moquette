@@ -77,6 +77,10 @@ abstract class AbstractProtocolProcessorCommonUtils {
 
         subscriptions = new CTrieSubscriptionDirectory();
         subscriptions.init(memStorage.sessionsStore());
+
+        m_sessionStore.createNewSession(FAKE_CLIENT_ID, true);
+        m_sessionStore.createNewSession(FAKE_CLIENT_ID2, true);
+
         m_processor = new ProtocolProcessor();
         m_processor.init(subscriptions, m_messagesStore, m_sessionStore, m_mockAuthenticator, true,
             new PermitAllAuthorizator(), NO_OBSERVERS_INTERCEPTOR);
