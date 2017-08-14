@@ -16,15 +16,27 @@
 
 package io.moquette.interception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import io.reactivex.Observable;
 import io.reactivex.subjects.PublishSubject;
 
 public class RxBus {
 
+    private static final Logger LOG = LoggerFactory.getLogger(RxBus.class);
+
     private PublishSubject<Object> subject = PublishSubject.create();
 
     public void publish(Object object) {
         subject.onNext(object);
+    }
+
+    public void publishSafe(Object object) {
+        try {
+            publish(object);
+        } catch (Throwable t) {
+            LOG.error(t.toString(), t);
+        }
     }
 
     public Observable<Object> getEvents() {
