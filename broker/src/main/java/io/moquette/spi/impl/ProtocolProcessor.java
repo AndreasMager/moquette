@@ -20,6 +20,7 @@ import io.moquette.interception.InterceptHandler;
 import io.moquette.interception.RxBus;
 import io.moquette.interception.messages.InterceptAcknowledgedMessage;
 import io.moquette.interception.messages.InterceptSubscribeMessage;
+import io.moquette.interception.messages.InterceptUnsubscribeMessage;
 import io.moquette.server.ConnectionDescriptor;
 import io.moquette.server.ConnectionDescriptorStore;
 import io.moquette.server.netty.NettyUtils;
@@ -756,7 +757,7 @@ public class ProtocolProcessor {
             subscriptions.removeSubscription(topic, clientID);
             clientSession.unsubscribeFrom(topic);
             String username = NettyUtils.userName(channel);
-            m_interceptor.notifyTopicUnsubscribed(topic.toString(), clientID, username);
+            bus.publish(new InterceptUnsubscribeMessage(topic.toString(), clientID, username));
         }
 
         // ack the client

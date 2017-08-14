@@ -107,13 +107,6 @@ public class BrokerInterceptorTest {
     }
 
     @Test
-    public void testNotifyTopicUnsubscribed() throws Exception {
-        interceptor.notifyTopicUnsubscribed("o2", "cli1234", "cli1234");
-        interval();
-        assertEquals(80, n.get());
-    }
-
-    @Test
     public void testAddAndRemoveInterceptHandler() throws Exception {
         InterceptHandler interceptHandlerMock1 = mock(InterceptHandler.class);
         InterceptHandler interceptHandlerMock2 = mock(InterceptHandler.class);

@@ -37,8 +37,6 @@ public interface Interceptor {
 
     void notifyClientConnectionLost(String clientID, String username);
 
-    void notifyTopicUnsubscribed(String topic, String clientID, String username);
-
     void notifyMessageAcknowledged(InterceptAcknowledgedMessage msg);
 
     void addInterceptHandler(InterceptHandler interceptHandler);
