@@ -18,6 +18,7 @@ package io.moquette.spi.impl;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.moquette.interception.RxBus;
 import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.impl.subscriptions.Topic;
 import io.moquette.spi.security.IAuthorizator;
@@ -28,9 +29,11 @@ abstract class QosPublishHandler {
     private static final Logger LOG = LoggerFactory.getLogger(QosPublishHandler.class);
 
     protected final IAuthorizator m_authorizator;
+    protected final RxBus bus;
 
-    protected QosPublishHandler(IAuthorizator m_authorizator) {
+    protected QosPublishHandler(IAuthorizator m_authorizator, RxBus bus) {
         this.m_authorizator = m_authorizator;
+        this.bus = bus;
     }
 
     public boolean checkWriteOnTopic(Topic topic, Channel channel) {

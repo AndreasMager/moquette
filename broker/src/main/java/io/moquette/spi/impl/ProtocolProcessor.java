@@ -17,6 +17,7 @@
 package io.moquette.spi.impl;
 
 import io.moquette.interception.InterceptHandler;
+import io.moquette.interception.RxBus;
 import io.moquette.interception.messages.InterceptAcknowledgedMessage;
 import io.moquette.server.ConnectionDescriptor;
 import io.moquette.server.ConnectionDescriptorStore;
@@ -147,6 +148,8 @@ public class ProtocolProcessor {
     private MessagesPublisher messagesPublisher;
     private InternalRepublisher internalRepublisher;
 
+    private RxBus bus = new RxBus();
+
     // maps clientID to Will testament, if specified on CONNECT
     private ConcurrentMap<String, WillMessage> m_willStore = new ConcurrentHashMap<>();
 
@@ -154,24 +157,22 @@ public class ProtocolProcessor {
     }
 
     public void init(ISubscriptionsDirectory subscriptions, IMessagesStore storageService, ISessionsStore sessionsStore,
-                     IAuthenticator authenticator, boolean allowAnonymous, IAuthorizator authorizator,
-                     BrokerInterceptor interceptor) {
-        init(subscriptions, storageService, sessionsStore, authenticator, allowAnonymous, false, authorizator,
-            interceptor, null);
+                     IAuthenticator authenticator, boolean allowAnonymous, IAuthorizator authorizator) {
+        init(subscriptions, storageService, sessionsStore, authenticator, allowAnonymous, false, authorizator, null);
     }
 
     public void init(ISubscriptionsDirectory subscriptions, IMessagesStore storageService, ISessionsStore sessionsStore,
                      IAuthenticator authenticator, boolean allowAnonymous, boolean allowZeroByteClientId,
-                     IAuthorizator authorizator, BrokerInterceptor interceptor) {
+                     IAuthorizator authorizator) {
         init(subscriptions, storageService, sessionsStore, authenticator, allowAnonymous, allowZeroByteClientId,
-            authorizator, interceptor, null);
+            authorizator, null);
     }
 
     public void init(ISubscriptionsDirectory subscriptions, IMessagesStore storageService, ISessionsStore sessionsStore,
                      IAuthenticator authenticator, boolean allowAnonymous, boolean allowZeroByteClientId,
-                     IAuthorizator authorizator, BrokerInterceptor interceptor, String serverPort) {
+                     IAuthorizator authorizator, String serverPort) {
         init(new ConnectionDescriptorStore(sessionsStore), subscriptions, storageService, sessionsStore, authenticator,
-            allowAnonymous, allowZeroByteClientId, authorizator, interceptor, serverPort);
+            allowAnonymous, allowZeroByteClientId, authorizator, serverPort);
     }
 
     /**
@@ -194,12 +195,10 @@ public class ProtocolProcessor {
      */
     void init(ConnectionDescriptorStore connectionDescriptors, ISubscriptionsDirectory subscriptions,
             IMessagesStore storageService, ISessionsStore sessionsStore, IAuthenticator authenticator,
-            boolean allowAnonymous, boolean allowZeroByteClientId, IAuthorizator authorizator,
-            BrokerInterceptor interceptor, String serverPort) {
+            boolean allowAnonymous, boolean allowZeroByteClientId, IAuthorizator authorizator, String serverPort) {
         LOG.info("Initializing MQTT protocol processor...");
         this.connectionDescriptors = connectionDescriptors;
         this.subscriptionInCourse = new ConcurrentHashMap<>();
-        this.m_interceptor = interceptor;
         this.subscriptions = subscriptions;
         this.allowAnonymous = allowAnonymous;
         this.allowZeroByteClientId = allowZeroByteClientId;
@@ -218,12 +217,11 @@ public class ProtocolProcessor {
             subscriptions);
 
         LOG.info("Initializing QoS publish handlers...");
-        this.qos0PublishHandler = new Qos0PublishHandler(m_authorizator, m_messagesStore, m_interceptor,
-                this.messagesPublisher);
-        this.qos1PublishHandler = new Qos1PublishHandler(m_authorizator, m_messagesStore, m_interceptor,
-                this.connectionDescriptors, this.messagesPublisher);
-        this.qos2PublishHandler = new Qos2PublishHandler(m_authorizator, subscriptions, m_messagesStore, m_interceptor,
-                this.connectionDescriptors, m_sessionsStore, this.messagesPublisher);
+        this.qos0PublishHandler = new Qos0PublishHandler(m_authorizator, m_messagesStore, this.messagesPublisher, bus);
+        this.qos1PublishHandler = new Qos1PublishHandler(m_authorizator, m_messagesStore, this.connectionDescriptors,
+                this.messagesPublisher, bus);
+        this.qos2PublishHandler = new Qos2PublishHandler(m_authorizator, subscriptions, m_messagesStore,
+                this.connectionDescriptors, m_sessionsStore, this.messagesPublisher, bus);
 
         LOG.info("Initializing internal republisher...");
         this.internalRepublisher = new InternalRepublisher(messageSender);
@@ -937,5 +935,9 @@ public class ProtocolProcessor {
 
     public ISessionsStore getSessionsStore() {
         return m_sessionsStore;
+    }
+
+    public RxBus getBus() {
+        return bus;
     }
 }

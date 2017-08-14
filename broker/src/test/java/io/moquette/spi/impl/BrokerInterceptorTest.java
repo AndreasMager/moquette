@@ -69,11 +69,6 @@ public class BrokerInterceptorTest {
         }
 
         @Override
-        public void onPublish(InterceptPublishMessage msg) {
-            n.set(60);
-        }
-
-        @Override
         public void onSubscribe(InterceptSubscribeMessage msg) {
             n.set(70);
         }
@@ -120,17 +115,6 @@ public class BrokerInterceptorTest {
         interceptor.notifyClientDisconnected("cli1234", "cli1234");
         interval();
         assertEquals(50, n.get());
-    }
-
-    @Test
-    public void testNotifyTopicPublished() throws Exception {
-        interceptor.notifyTopicPublished(
-                MqttMessageBuilders.publish().qos(MqttQoS.AT_MOST_ONCE)
-                    .payload(Unpooled.copiedBuffer("Hello".getBytes())).build(),
-                "cli1234",
-                "cli1234");
-        interval();
-        assertEquals(60, n.get());
     }
 
     @Test

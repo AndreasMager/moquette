@@ -21,34 +21,42 @@ import com.hazelcast.core.ITopic;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.server.Server;
 import io.netty.buffer.ByteBuf;
+import io.reactivex.Scheduler;
+import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static io.moquette.spi.impl.Utils.readBytesAndRewind;
+import java.util.concurrent.Executors;
 
 public class HazelcastInterceptHandler extends AbstractInterceptHandler {
+
+    static Scheduler threadPool = Schedulers.from(Executors.newSingleThreadExecutor());
 
     private static final Logger LOG = LoggerFactory.getLogger(HazelcastInterceptHandler.class);
     private final HazelcastInstance hz;
 
     public HazelcastInterceptHandler(Server server) {
         this.hz = server.getHazelcastInstance();
+
+        server.getProcessor().getBus().getEvents()
+            .filter(msg -> msg instanceof InterceptPublishMessage)
+            .cast(InterceptPublishMessage.class)
+            .observeOn(threadPool) // Don't pause netty eventloop thread
+            .subscribe(msg ->  {
+                // TODO ugly, too much array copy
+                ByteBuf payload = msg.getPayload();
+                byte[] payloadContent = readBytesAndRewind(payload);
+
+                LOG.info("{} publish on {} message: {}", msg.getClientID(), msg.getTopicName(),
+                        new String(payloadContent));
+                ITopic<HazelcastMsg> topic = hz.getTopic("moquette");
+                HazelcastMsg hazelcastMsg = new HazelcastMsg(msg);
+                topic.publish(hazelcastMsg);
+            });
     }
 
     @Override
     public String getID() {
         return HazelcastInterceptHandler.class.getName() + "@" + hz.getName();
     }
-
-    @Override
-    public void onPublish(InterceptPublishMessage msg) {
-        // TODO ugly, too much array copy
-        ByteBuf payload = msg.getPayload();
-        byte[] payloadContent = readBytesAndRewind(payload);
-
-        LOG.info("{} publish on {} message: {}", msg.getClientID(), msg.getTopicName(), new String(payloadContent));
-        ITopic<HazelcastMsg> topic = hz.getTopic("moquette");
-        HazelcastMsg hazelcastMsg = new HazelcastMsg(msg);
-        topic.publish(hazelcastMsg);
-    }
-
 }

@@ -32,7 +32,7 @@ import io.netty.handler.codec.mqtt.MqttMessage;
 public interface InterceptHandler {
 
     Class<?>[] ALL_MESSAGE_TYPES = {InterceptConnectMessage.class, InterceptDisconnectMessage.class,
-            InterceptConnectionLostMessage.class, InterceptPublishMessage.class, InterceptSubscribeMessage.class,
+            InterceptConnectionLostMessage.class, InterceptSubscribeMessage.class,
             InterceptUnsubscribeMessage.class, InterceptAcknowledgedMessage.class};
 
     /**
@@ -55,8 +55,6 @@ public interface InterceptHandler {
     void onDisconnect(InterceptDisconnectMessage msg);
 
     void onConnectionLost(InterceptConnectionLostMessage msg);
-
-    void onPublish(InterceptPublishMessage msg);
 
     void onSubscribe(InterceptSubscribeMessage msg);
 

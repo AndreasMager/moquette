@@ -19,7 +19,6 @@ package io.moquette.interception;
 import io.moquette.interception.messages.InterceptAcknowledgedMessage;
 import io.moquette.spi.impl.subscriptions.Subscription;
 import io.netty.handler.codec.mqtt.MqttConnectMessage;
-import io.netty.handler.codec.mqtt.MqttPublishMessage;
 
 /**
  * This interface is to be used internally by the broker components.
@@ -38,8 +37,6 @@ public interface Interceptor {
     void notifyClientDisconnected(String clientID, String username);
 
     void notifyClientConnectionLost(String clientID, String username);
-
-    void notifyTopicPublished(MqttPublishMessage msg, String clientID, String username);
 
     void notifyTopicSubscribed(Subscription sub, String username);
 

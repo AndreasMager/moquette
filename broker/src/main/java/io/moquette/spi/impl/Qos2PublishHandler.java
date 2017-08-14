@@ -16,6 +16,8 @@
 
 package io.moquette.spi.impl;
 
+import io.moquette.interception.RxBus;
+import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.server.ConnectionDescriptorStore;
 import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.ClientSession;
@@ -41,19 +43,16 @@ class Qos2PublishHandler extends QosPublishHandler {
 
     private final ISubscriptionsDirectory subscriptions;
     private final IMessagesStore m_messagesStore;
-    private final BrokerInterceptor m_interceptor;
     private final ConnectionDescriptorStore connectionDescriptors;
     private final ISessionsStore m_sessionsStore;
     private final MessagesPublisher publisher;
 
     public Qos2PublishHandler(IAuthorizator authorizator, ISubscriptionsDirectory subscriptions,
-                              IMessagesStore messagesStore, BrokerInterceptor interceptor,
-                              ConnectionDescriptorStore connectionDescriptors, ISessionsStore sessionsStore,
-                              MessagesPublisher messagesPublisher) {
-        super(authorizator);
+            IMessagesStore messagesStore, ConnectionDescriptorStore connectionDescriptors, ISessionsStore sessionsStore,
+            MessagesPublisher messagesPublisher, RxBus bus) {
+        super(authorizator, bus);
         this.subscriptions = subscriptions;
         this.m_messagesStore = messagesStore;
-        this.m_interceptor = interceptor;
         this.connectionDescriptors = connectionDescriptors;
         this.m_sessionsStore = sessionsStore;
         this.publisher = messagesPublisher;
@@ -93,8 +92,6 @@ class Qos2PublishHandler extends QosPublishHandler {
 //                m_messagesStore.storeRetained(topic, toStoreMsg);
 //            }
 //        }
-        //TODO this should happen on PUB_REL, else we notify false positive
-        m_interceptor.notifyTopicPublished(msg, clientID, username);
     }
 
     /**
@@ -103,6 +100,7 @@ class Qos2PublishHandler extends QosPublishHandler {
      */
     void processPubRel(Channel channel, MqttMessage msg) {
         String clientID = NettyUtils.clientID(channel);
+        String username = NettyUtils.userName(channel);
         int messageID = messageId(msg);
         LOG.info("Processing PUBREL message. CId={}, messageId={}", clientID, messageID);
         ClientSession targetSession = m_sessionsStore.sessionForClient(clientID);
@@ -123,10 +121,15 @@ class Qos2PublishHandler extends QosPublishHandler {
             }
         }
 
-        //TODO here we should notify to the listeners
-        //m_interceptor.notifyTopicPublished(msg, clientID, username);
+        try {
+            bus.publish(new InterceptPublishMessage(MqttMessageBuilders.publish().messageId(messageID).qos(evt.getQos())
+                    .payload(evt.getPayload()).retained(evt.isRetained()).topicName(topic.toString()).build(), clientID,
+                    username));
 
-        sendPubComp(clientID, messageID);
+            sendPubComp(clientID, messageID);
+        } catch (Throwable t) {
+            LOG.error(t.toString(), t);
+        }
     }
 
     private void sendPubRec(String clientID, int messageID) {

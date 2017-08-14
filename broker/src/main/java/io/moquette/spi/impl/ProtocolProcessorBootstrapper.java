@@ -172,7 +172,7 @@ public class ProtocolProcessorBootstrapper {
         boolean allowZeroByteClientId = Boolean
                 .parseBoolean(props.getProperty(BrokerConstants.ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME, "false"));
         m_processor.init(connectionDescriptors, subscriptions, messagesStore, m_sessionsStore, authenticator,
-                allowAnonymous, allowZeroByteClientId, authorizator, interceptor,
+                allowAnonymous, allowZeroByteClientId, authorizator,
                 props.getProperty(BrokerConstants.PORT_PROPERTY_NAME));
         return m_processor;
     }

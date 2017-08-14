@@ -16,6 +16,8 @@
 
 package io.moquette.spi.impl;
 
+import io.moquette.interception.RxBus;
+import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.server.ConnectionDescriptorStore;
 import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.IMessagesStore;
@@ -26,6 +28,7 @@ import io.netty.handler.codec.mqtt.MqttFixedHeader;
 import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttPubAckMessage;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
+import org.apache.log4j.lf5.viewer.configure.MRUFileManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,15 +41,13 @@ class Qos1PublishHandler extends QosPublishHandler {
     private static final Logger LOG = LoggerFactory.getLogger(Qos1PublishHandler.class);
 
     private final IMessagesStore m_messagesStore;
-    private final BrokerInterceptor m_interceptor;
     private final ConnectionDescriptorStore connectionDescriptors;
     private final MessagesPublisher publisher;
 
-    public Qos1PublishHandler(IAuthorizator authorizator, IMessagesStore messagesStore, BrokerInterceptor interceptor,
-                              ConnectionDescriptorStore connectionDescriptors, MessagesPublisher messagesPublisher) {
-        super(authorizator);
+    public Qos1PublishHandler(IAuthorizator authorizator, IMessagesStore messagesStore,
+            ConnectionDescriptorStore connectionDescriptors, MessagesPublisher messagesPublisher, RxBus bus) {
+        super(authorizator, bus);
         this.m_messagesStore = messagesStore;
-        this.m_interceptor = interceptor;
         this.connectionDescriptors = connectionDescriptors;
         this.publisher = messagesPublisher;
     }
@@ -69,7 +70,12 @@ class Qos1PublishHandler extends QosPublishHandler {
 
         this.publisher.publish2Subscribers(toStoreMsg, topic, messageID);
 
-        sendPubAck(clientID, messageID);
+        try {
+            bus.publish(new InterceptPublishMessage(msg, clientID, username));
+            sendPubAck(clientID, messageID);
+        } catch (Throwable t) {
+            LOG.error(t.toString(), t);
+        }
 
         if (msg.fixedHeader().isRetain()) {
             if (!msg.payload().isReadable()) {
@@ -79,8 +85,6 @@ class Qos1PublishHandler extends QosPublishHandler {
                 m_messagesStore.storeRetained(topic, toStoreMsg);
             }
         }
-
-        m_interceptor.notifyTopicPublished(msg, clientID, username);
     }
 
     private void sendPubAck(String clientId, int messageID) {

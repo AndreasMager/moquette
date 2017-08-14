@@ -16,6 +16,8 @@
 
 package io.moquette.spi.impl;
 
+import io.moquette.interception.RxBus;
+import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.IMessagesStore;
 import io.moquette.spi.impl.subscriptions.Topic;
@@ -31,14 +33,12 @@ class Qos0PublishHandler extends QosPublishHandler {
     private static final Logger LOG = LoggerFactory.getLogger(Qos0PublishHandler.class);
 
     private final IMessagesStore m_messagesStore;
-    private final BrokerInterceptor m_interceptor;
     private final MessagesPublisher publisher;
 
-    public Qos0PublishHandler(IAuthorizator authorizator, IMessagesStore messagesStore, BrokerInterceptor interceptor,
-                              MessagesPublisher messagesPublisher) {
-        super(authorizator);
+    public Qos0PublishHandler(IAuthorizator authorizator, IMessagesStore messagesStore,
+            MessagesPublisher messagesPublisher, RxBus bus) {
+        super(authorizator, bus);
         this.m_messagesStore = messagesStore;
-        this.m_interceptor = interceptor;
         this.publisher = messagesPublisher;
     }
 
@@ -58,11 +58,15 @@ class Qos0PublishHandler extends QosPublishHandler {
 
         this.publisher.publish2Subscribers(toStoreMsg, topic);
 
+        try {
+            bus.publish(new InterceptPublishMessage(msg, clientID, username));
+        } catch (Throwable t) {
+            LOG.error(t.toString(), t);
+        }
+
         if (msg.fixedHeader().isRetain()) {
             // QoS == 0 && retain => clean old retained
             m_messagesStore.cleanRetained(topic);
         }
-
-        m_interceptor.notifyTopicPublished(msg, clientID, username);
     }
 }
