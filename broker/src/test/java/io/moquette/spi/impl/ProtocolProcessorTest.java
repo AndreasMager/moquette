@@ -16,7 +16,6 @@
 
 package io.moquette.spi.impl;
 
-import io.moquette.interception.InterceptHandler;
 import io.moquette.persistence.MemoryStorageService;
 import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.IMessagesStore;
@@ -54,10 +53,6 @@ public class ProtocolProcessorTest extends AbstractProtocolProcessorCommonUtils 
     static final String TEST_PWD = "fakepwd";
     static final String EVIL_TEST_USER = "eviluser";
     static final String EVIL_TEST_PWD = "unsecret";
-
-    static final List<InterceptHandler> EMPTY_OBSERVERS = Collections.emptyList();
-    static final BrokerInterceptor NO_OBSERVERS_INTERCEPTOR = new BrokerInterceptor(EMPTY_OBSERVERS);
-
 
     @Before
     public void setUp() throws InterruptedException {

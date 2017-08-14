@@ -21,16 +21,12 @@ import com.hazelcast.core.ITopic;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.server.Server;
 import io.netty.buffer.ByteBuf;
-import io.reactivex.Scheduler;
 import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static io.moquette.spi.impl.Utils.readBytesAndRewind;
-import java.util.concurrent.Executors;
 
-public class HazelcastInterceptHandler extends AbstractInterceptHandler {
-
-    static Scheduler threadPool = Schedulers.from(Executors.newSingleThreadExecutor());
+public class HazelcastInterceptHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(HazelcastInterceptHandler.class);
     private final HazelcastInstance hz;
@@ -41,7 +37,7 @@ public class HazelcastInterceptHandler extends AbstractInterceptHandler {
         server.getProcessor().getBus().getEvents()
             .filter(msg -> msg instanceof InterceptPublishMessage)
             .cast(InterceptPublishMessage.class)
-            .observeOn(threadPool) // Don't pause netty eventloop thread
+            .observeOn(Schedulers.single()) // Don't pause netty eventloop thread
             .subscribe(msg ->  {
                 // TODO ugly, too much array copy
                 ByteBuf payload = msg.getPayload();
@@ -55,7 +51,6 @@ public class HazelcastInterceptHandler extends AbstractInterceptHandler {
             });
     }
 
-    @Override
     public String getID() {
         return HazelcastInterceptHandler.class.getName() + "@" + hz.getName();
     }

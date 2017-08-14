@@ -30,7 +30,6 @@ import io.moquette.spi.impl.security.*;
 import io.moquette.spi.impl.subscriptions.CTrieSubscriptionDirectory;
 import io.moquette.spi.impl.subscriptions.ISubscriptionsDirectory;
 import io.moquette.spi.impl.subscriptions.Subscription;
-import io.moquette.spi.impl.subscriptions.SubscriptionsDirectory;
 import io.moquette.spi.security.IAuthenticator;
 import io.moquette.spi.security.IAuthorizator;
 import org.slf4j.Logger;
@@ -117,8 +116,6 @@ public class ProtocolProcessorBootstrapper {
                 observers.add(handler);
             }
         }
-        BrokerInterceptor interceptor = new BrokerInterceptor(props, observers);
-
         LOG.info("Initializing subscriptions store...");
         ISubscriptionsDirectory subscriptions = new CTrieSubscriptionDirectory();
         subscriptions.init(m_sessionsStore);
@@ -254,8 +251,6 @@ public class ProtocolProcessorBootstrapper {
     public void shutdown() {
         if (storeShutdown != null)
             storeShutdown.run();
-//        if (m_interceptor != null)
-//            m_interceptor.stop();
     }
 
     public ConnectionDescriptorStore getConnectionDescriptors() {
