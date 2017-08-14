@@ -19,6 +19,7 @@ package io.moquette.spi.impl;
 import io.moquette.interception.InterceptHandler;
 import io.moquette.interception.RxBus;
 import io.moquette.interception.messages.InterceptAcknowledgedMessage;
+import io.moquette.interception.messages.InterceptSubscribeMessage;
 import io.moquette.server.ConnectionDescriptor;
 import io.moquette.server.ConnectionDescriptorStore;
 import io.moquette.server.netty.NettyUtils;
@@ -900,7 +901,7 @@ public class ProtocolProcessor {
         this.internalRepublisher.publishRetained(targetSession, messages);
 
         // notify the Observables
-        m_interceptor.notifyTopicSubscribed(newSubscription, username);
+        bus.publish(new InterceptSubscribeMessage(newSubscription, username));
     }
 
     public void notifyChannelWritable(Channel channel) {

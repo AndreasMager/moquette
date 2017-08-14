@@ -21,7 +21,6 @@ import io.moquette.interception.InterceptHandler;
 import io.moquette.interception.Interceptor;
 import io.moquette.interception.messages.*;
 import io.moquette.server.config.IConfig;
-import io.moquette.spi.impl.subscriptions.Subscription;
 import io.netty.handler.codec.mqtt.MqttConnectMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,15 +111,6 @@ final class BrokerInterceptor implements Interceptor {
             LOG.debug("Notifying unexpected MQTT client disconnection to interceptor CId={}, username={}, " +
                 "interceptorId={}", clientID, username, handler.getID());
             executor.execute(() -> handler.onConnectionLost(new InterceptConnectionLostMessage(clientID, username)));
-        }
-    }
-
-    @Override
-    public void notifyTopicSubscribed(final Subscription sub, final String username) {
-        for (final InterceptHandler handler : this.handlers.get(InterceptSubscribeMessage.class)) {
-            LOG.debug("Notifying MQTT SUBSCRIBE message to interceptor. CId={}, topicFilter={}, interceptorId={}",
-                sub.getClientId(), sub.getTopicFilter(), handler.getID());
-            executor.execute(() -> handler.onSubscribe(new InterceptSubscribeMessage(sub, username)));
         }
     }
 

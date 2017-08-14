@@ -18,11 +18,7 @@ package io.moquette.spi.impl;
 
 import io.moquette.interception.InterceptHandler;
 import io.moquette.interception.messages.*;
-import io.moquette.spi.impl.subscriptions.Subscription;
-import io.moquette.spi.impl.subscriptions.Topic;
-import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.mqtt.MqttMessageBuilders;
-import io.netty.handler.codec.mqtt.MqttQoS;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -31,9 +27,7 @@ import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Matchers.refEq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 
 public class BrokerInterceptorTest {
 
@@ -66,11 +60,6 @@ public class BrokerInterceptorTest {
         @Override
         public void onConnectionLost(InterceptConnectionLostMessage msg) {
             n.set(30);
-        }
-
-        @Override
-        public void onSubscribe(InterceptSubscribeMessage msg) {
-            n.set(70);
         }
 
         @Override
@@ -118,13 +107,6 @@ public class BrokerInterceptorTest {
     }
 
     @Test
-    public void testNotifyTopicSubscribed() throws Exception {
-        interceptor.notifyTopicSubscribed(new Subscription("cli1", new Topic("o2"), MqttQoS.AT_MOST_ONCE), "cli1234");
-        interval();
-        assertEquals(70, n.get());
-    }
-
-    @Test
     public void testNotifyTopicUnsubscribed() throws Exception {
         interceptor.notifyTopicUnsubscribed("o2", "cli1234", "cli1234");
         interval();
@@ -139,21 +121,7 @@ public class BrokerInterceptorTest {
         interceptor.addInterceptHandler(interceptHandlerMock1);
         interceptor.addInterceptHandler(interceptHandlerMock2);
 
-        Subscription subscription = new Subscription("cli1", new Topic("o2"), MqttQoS.AT_MOST_ONCE);
-        interceptor.notifyTopicSubscribed(subscription, "cli1234");
-        interval();
-
-        verify(interceptHandlerMock1).onSubscribe(refEq(new InterceptSubscribeMessage(subscription, "cli1234")));
-        verify(interceptHandlerMock2).onSubscribe(refEq(new InterceptSubscribeMessage(subscription, "cli1234")));
-
         // remove
         interceptor.removeInterceptHandler(interceptHandlerMock1);
-
-        interceptor.notifyTopicSubscribed(subscription, "cli1235");
-        interval();
-        // removeInterceptHandler() performs another interaction
-        // TODO: fix this
-        // verifyNoMoreInteractions(interceptHandlerMock1);
-        verify(interceptHandlerMock2).onSubscribe(refEq(new InterceptSubscribeMessage(subscription, "cli1235")));
     }
 }
