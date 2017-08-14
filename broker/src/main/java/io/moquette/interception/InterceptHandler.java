@@ -17,23 +17,17 @@
 package io.moquette.interception;
 
 import io.moquette.interception.messages.*;
-import io.moquette.spi.impl.subscriptions.Subscription;
-import io.netty.handler.codec.mqtt.MqttMessage;
+import io.moquette.spi.impl.ProtocolProcessor;
 
 /**
- * This interface is used to inject code for intercepting broker events.
- * <p>
- * The events can act only as observers.
- * <p>
- * Almost every method receives a subclass of {@link MqttMessage}, except <code>onDisconnect</code>
- * that receives the client id string and <code>onSubscribe</code> and <code>onUnsubscribe</code>
- * that receive a {@link Subscription} object.
+ * Use {@link ProtocolProcessor#getBus()}
  */
+@Deprecated()
 public interface InterceptHandler {
 
     Class<?>[] ALL_MESSAGE_TYPES = {InterceptConnectMessage.class, InterceptDisconnectMessage.class,
-            InterceptConnectionLostMessage.class, InterceptUnsubscribeMessage.class,
-            InterceptAcknowledgedMessage.class};
+            InterceptConnectionLostMessage.class, InterceptPublishMessage.class, InterceptSubscribeMessage.class,
+            InterceptUnsubscribeMessage.class, InterceptAcknowledgedMessage.class};
 
     /**
      * Returns the identifier of this intercept handler.
@@ -55,6 +49,10 @@ public interface InterceptHandler {
     void onDisconnect(InterceptDisconnectMessage msg);
 
     void onConnectionLost(InterceptConnectionLostMessage msg);
+
+    void onPublish(InterceptPublishMessage msg);
+
+    void onSubscribe(InterceptSubscribeMessage msg);
 
     void onUnsubscribe(InterceptUnsubscribeMessage msg);
 
