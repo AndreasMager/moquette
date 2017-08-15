@@ -17,7 +17,14 @@
 package io.moquette.spi.impl;
 
 import io.moquette.interception.InterceptHandler;
+import io.moquette.interception.RxBus;
 import io.moquette.interception.messages.InterceptAcknowledgedMessage;
+import io.moquette.interception.messages.InterceptConnectMessage;
+import io.moquette.interception.messages.InterceptConnectionLostMessage;
+import io.moquette.interception.messages.InterceptDisconnectMessage;
+import io.moquette.interception.messages.InterceptPublishMessage;
+import io.moquette.interception.messages.InterceptSubscribeMessage;
+import io.moquette.interception.messages.InterceptUnsubscribeMessage;
 import io.moquette.server.ConnectionDescriptor;
 import io.moquette.server.ConnectionDescriptorStore;
 import io.moquette.server.netty.NettyUtils;
@@ -34,6 +41,9 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelPipeline;
 import io.netty.handler.codec.mqtt.*;
 import io.netty.handler.timeout.IdleStateHandler;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Consumer;
+import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +51,7 @@ import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-
+import java.util.stream.Collectors;
 import static io.moquette.server.ConnectionDescriptor.ConnectionState.*;
 import static io.moquette.spi.impl.InternalRepublisher.createPublishForQos;
 import static io.moquette.spi.impl.Utils.messageId;
@@ -140,13 +150,14 @@ public class ProtocolProcessor {
     private ISessionsStore m_sessionsStore;
 
     private IAuthenticator m_authenticator;
-    private BrokerInterceptor m_interceptor;
 
     private Qos0PublishHandler qos0PublishHandler;
     private Qos1PublishHandler qos1PublishHandler;
     private Qos2PublishHandler qos2PublishHandler;
     private MessagesPublisher messagesPublisher;
     private InternalRepublisher internalRepublisher;
+
+    private RxBus bus = new RxBus();
 
     // maps clientID to Will testament, if specified on CONNECT
     private ConcurrentMap<String, WillMessage> m_willStore = new ConcurrentHashMap<>();
@@ -155,24 +166,22 @@ public class ProtocolProcessor {
     }
 
     public void init(ISubscriptionsDirectory subscriptions, IMessagesStore storageService, ISessionsStore sessionsStore,
-                     IAuthenticator authenticator, boolean allowAnonymous, IAuthorizator authorizator,
-                     BrokerInterceptor interceptor) {
-        init(subscriptions, storageService, sessionsStore, authenticator, allowAnonymous, false, authorizator,
-            interceptor, null);
+                     IAuthenticator authenticator, boolean allowAnonymous, IAuthorizator authorizator) {
+        init(subscriptions, storageService, sessionsStore, authenticator, allowAnonymous, false, authorizator, null);
     }
 
     public void init(ISubscriptionsDirectory subscriptions, IMessagesStore storageService, ISessionsStore sessionsStore,
                      IAuthenticator authenticator, boolean allowAnonymous, boolean allowZeroByteClientId,
-                     IAuthorizator authorizator, BrokerInterceptor interceptor) {
+                     IAuthorizator authorizator) {
         init(subscriptions, storageService, sessionsStore, authenticator, allowAnonymous, allowZeroByteClientId,
-            authorizator, interceptor, null);
+            authorizator, null);
     }
 
     public void init(ISubscriptionsDirectory subscriptions, IMessagesStore storageService, ISessionsStore sessionsStore,
                      IAuthenticator authenticator, boolean allowAnonymous, boolean allowZeroByteClientId,
-                     IAuthorizator authorizator, BrokerInterceptor interceptor, String serverPort) {
+                     IAuthorizator authorizator, String serverPort) {
         init(new ConnectionDescriptorStore(sessionsStore), subscriptions, storageService, sessionsStore, authenticator,
-            allowAnonymous, allowZeroByteClientId, authorizator, interceptor, serverPort);
+            allowAnonymous, allowZeroByteClientId, authorizator, serverPort);
     }
 
     /**
@@ -195,12 +204,10 @@ public class ProtocolProcessor {
      */
     void init(ConnectionDescriptorStore connectionDescriptors, ISubscriptionsDirectory subscriptions,
             IMessagesStore storageService, ISessionsStore sessionsStore, IAuthenticator authenticator,
-            boolean allowAnonymous, boolean allowZeroByteClientId, IAuthorizator authorizator,
-            BrokerInterceptor interceptor, String serverPort) {
+            boolean allowAnonymous, boolean allowZeroByteClientId, IAuthorizator authorizator, String serverPort) {
         LOG.info("Initializing MQTT protocol processor...");
         this.connectionDescriptors = connectionDescriptors;
         this.subscriptionInCourse = new ConcurrentHashMap<>();
-        this.m_interceptor = interceptor;
         this.subscriptions = subscriptions;
         this.allowAnonymous = allowAnonymous;
         this.allowZeroByteClientId = allowZeroByteClientId;
@@ -219,12 +226,11 @@ public class ProtocolProcessor {
             subscriptions);
 
         LOG.info("Initializing QoS publish handlers...");
-        this.qos0PublishHandler = new Qos0PublishHandler(m_authorizator, m_messagesStore, m_interceptor,
-                this.messagesPublisher);
-        this.qos1PublishHandler = new Qos1PublishHandler(m_authorizator, m_messagesStore, m_interceptor,
-                this.connectionDescriptors, this.messagesPublisher);
-        this.qos2PublishHandler = new Qos2PublishHandler(m_authorizator, subscriptions, m_messagesStore, m_interceptor,
-                this.connectionDescriptors, m_sessionsStore, this.messagesPublisher);
+        this.qos0PublishHandler = new Qos0PublishHandler(m_authorizator, m_messagesStore, this.messagesPublisher, bus);
+        this.qos1PublishHandler = new Qos1PublishHandler(m_authorizator, m_messagesStore, this.connectionDescriptors,
+                this.messagesPublisher, bus);
+        this.qos2PublishHandler = new Qos2PublishHandler(m_authorizator, subscriptions, m_messagesStore,
+                this.connectionDescriptors, m_sessionsStore, this.messagesPublisher, bus);
 
         LOG.info("Initializing internal republisher...");
         this.internalRepublisher = new InternalRepublisher(messageSender);
@@ -284,7 +290,7 @@ public class ProtocolProcessor {
             return;
         }
 
-        m_interceptor.notifyClientConnected(msg);
+        bus.publishSafe(new InterceptConnectMessage(msg));
 
         final ClientSession clientSession = createOrLoadClientSession(descriptor, msg, clientId);
         if (clientSession == null) {
@@ -473,8 +479,7 @@ public class ProtocolProcessor {
         Message inflightMsg = targetSession.inFlightAcknowledged(messageID);
 
         String topic = inflightMsg.getTopic();
-        InterceptAcknowledgedMessage wrapped = new InterceptAcknowledgedMessage(inflightMsg, topic, username, messageID);
-        m_interceptor.notifyMessageAcknowledged(wrapped);
+        bus.publish(new InterceptAcknowledgedMessage(inflightMsg, topic, username, messageID));
     }
 
     public static IMessagesStore.StoredMessage asStoredMessage(MqttPublishMessage msg) {
@@ -619,8 +624,7 @@ public class ProtocolProcessor {
         Message inflightMsg = targetSession.secondPhaseAcknowledged(messageID);
         String username = NettyUtils.userName(channel);
         String topic = inflightMsg.getTopic();
-        m_interceptor
-                .notifyMessageAcknowledged(new InterceptAcknowledgedMessage(inflightMsg, topic, username, messageID));
+        bus.publish(new InterceptAcknowledgedMessage(inflightMsg, topic, username, messageID));
     }
 
     public void processDisconnect(Channel channel) throws InterruptedException {
@@ -712,7 +716,7 @@ public class ProtocolProcessor {
         // cleanup the will store
         m_willStore.remove(clientID);
         String username = descriptor.getUsername();
-        m_interceptor.notifyClientDisconnected(clientID, username);
+        bus.publishSafe(new InterceptDisconnectMessage(clientID, username));
         return true;
     }
 
@@ -728,7 +732,7 @@ public class ProtocolProcessor {
         }
 
         String username = NettyUtils.userName(channel);
-        m_interceptor.notifyClientConnectionLost(clientID, username);
+        bus.publish(new InterceptConnectionLostMessage(clientID, username));
     }
 
     /**
@@ -761,7 +765,7 @@ public class ProtocolProcessor {
             subscriptions.removeSubscription(topic, clientID);
             clientSession.unsubscribeFrom(topic);
             String username = NettyUtils.userName(channel);
-            m_interceptor.notifyTopicUnsubscribed(topic, clientID, username);
+            bus.publishSafe(new InterceptUnsubscribeMessage(topic.toString(), clientID, username));
         }
 
         // ack the client
@@ -909,6 +913,9 @@ public class ProtocolProcessor {
             ClientSession targetSession = m_sessionsStore.sessionForClient(sub.getClientId());
             this.internalRepublisher.publishRetained(targetSession, messages);
         });
+
+        // notify the Observables
+        bus.publish(new InterceptSubscribeMessage(newSubscription, username));
     }
 
     public void notifyChannelWritable(Channel channel) {
@@ -929,12 +936,58 @@ public class ProtocolProcessor {
         channel.flush();
     }
 
+    private HashMap<InterceptHandler, List<Disposable>> handler = new HashMap<>();
+
+    /**
+     * Use {@link ProtocolProcessor#getBus()}
+     */
+    @Deprecated
     public void addInterceptHandler(InterceptHandler interceptHandler) {
-        this.m_interceptor.addInterceptHandler(interceptHandler);
+        handler.put(interceptHandler, Arrays.stream(interceptHandler.getInterceptedMessageTypes())
+            .map(clazz -> choose(clazz, interceptHandler))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList()));
     }
 
+    private Disposable choose(Class<?> clazz, InterceptHandler interceptHandler) {
+        if (clazz.equals(InterceptConnectMessage.class)) {
+            return addHandler(InterceptConnectMessage.class, interceptHandler::onConnect);
+        } else if (clazz.equals(InterceptDisconnectMessage.class)) {
+            return addHandler(InterceptDisconnectMessage.class, interceptHandler::onDisconnect);
+        } else if (clazz.equals(InterceptConnectionLostMessage.class)) {
+            return addHandler(InterceptConnectionLostMessage.class, interceptHandler::onConnectionLost);
+        } else if (clazz.equals(InterceptPublishMessage.class)) {
+            return addHandler(InterceptPublishMessage.class, interceptHandler::onPublish);
+        } else if (clazz.equals(InterceptSubscribeMessage.class)) {
+            return addHandler(InterceptSubscribeMessage.class, interceptHandler::onSubscribe);
+        } else if (clazz.equals(InterceptUnsubscribeMessage.class)) {
+            return addHandler(InterceptUnsubscribeMessage.class, interceptHandler::onUnsubscribe);
+        } else if (clazz.equals(InterceptAcknowledgedMessage.class)) {
+            return addHandler(InterceptAcknowledgedMessage.class, interceptHandler::onMessageAcknowledged);
+        }
+
+        return null;
+    }
+
+    private <T> Disposable addHandler(Class<T> target, Consumer<T> foo) {
+        return getBus()
+                .getEvents()
+                .filter(target::isInstance)
+                .cast(target)
+                .observeOn(Schedulers.single())
+                .subscribe(foo);
+    }
+
+    /**
+     * Use {@link ProtocolProcessor#getBus()}
+     */
+    @Deprecated
     public void removeInterceptHandler(InterceptHandler interceptHandler) {
-        this.m_interceptor.removeInterceptHandler(interceptHandler);
+        List<Disposable> list = handler.remove(interceptHandler);
+        if (list == null)
+            return;
+
+        list.forEach(Disposable::dispose);
     }
 
     public IMessagesStore getMessagesStore() {
@@ -943,5 +996,9 @@ public class ProtocolProcessor {
 
     public ISessionsStore getSessionsStore() {
         return m_sessionsStore;
+    }
+
+    public RxBus getBus() {
+        return bus;
     }
 }

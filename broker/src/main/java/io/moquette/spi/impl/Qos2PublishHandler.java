@@ -16,6 +16,8 @@
 
 package io.moquette.spi.impl;
 
+import io.moquette.interception.RxBus;
+import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.server.ConnectionDescriptorStore;
 import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.ClientSession;
@@ -24,6 +26,7 @@ import io.moquette.spi.ISessionsStore;
 import io.moquette.spi.impl.subscriptions.ISubscriptionsDirectory;
 import io.moquette.spi.impl.subscriptions.Topic;
 import io.moquette.spi.security.IAuthorizator;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.*;
 import org.slf4j.Logger;
@@ -32,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import static io.moquette.spi.impl.DebugUtils.payload2Str;
 import static io.moquette.spi.impl.ProtocolProcessor.asStoredMessage;
 import static io.moquette.spi.impl.Utils.messageId;
+import static io.moquette.spi.impl.Utils.readBytesAndRewind;
 import static io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader.from;
 import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 
@@ -41,19 +45,16 @@ class Qos2PublishHandler extends QosPublishHandler {
 
     private final ISubscriptionsDirectory subscriptions;
     private final IMessagesStore m_messagesStore;
-    private final BrokerInterceptor m_interceptor;
     private final ConnectionDescriptorStore connectionDescriptors;
     private final ISessionsStore m_sessionsStore;
     private final MessagesPublisher publisher;
 
     public Qos2PublishHandler(IAuthorizator authorizator, ISubscriptionsDirectory subscriptions,
-                              IMessagesStore messagesStore, BrokerInterceptor interceptor,
-                              ConnectionDescriptorStore connectionDescriptors, ISessionsStore sessionsStore,
-                              MessagesPublisher messagesPublisher) {
-        super(authorizator);
+            IMessagesStore messagesStore, ConnectionDescriptorStore connectionDescriptors, ISessionsStore sessionsStore,
+            MessagesPublisher messagesPublisher, RxBus bus) {
+        super(authorizator, bus);
         this.subscriptions = subscriptions;
         this.m_messagesStore = messagesStore;
-        this.m_interceptor = interceptor;
         this.connectionDescriptors = connectionDescriptors;
         this.m_sessionsStore = sessionsStore;
         this.publisher = messagesPublisher;
@@ -93,8 +94,6 @@ class Qos2PublishHandler extends QosPublishHandler {
 //                m_messagesStore.storeRetained(topic, toStoreMsg);
 //            }
 //        }
-        //TODO this should happen on PUB_REL, else we notify false positive
-        m_interceptor.notifyTopicPublished(msg, topic, clientID, username);
     }
 
     /**
@@ -103,6 +102,7 @@ class Qos2PublishHandler extends QosPublishHandler {
      */
     void processPubRel(Channel channel, MqttMessage msg) {
         String clientID = NettyUtils.clientID(channel);
+        String username = NettyUtils.userName(channel);
         int messageID = messageId(msg);
         LOG.info("Processing PUBREL message. CId={}, messageId={}", clientID, messageID);
         ClientSession targetSession = m_sessionsStore.sessionForClient(clientID);
@@ -123,10 +123,21 @@ class Qos2PublishHandler extends QosPublishHandler {
             }
         }
 
-        //TODO here we should notify to the listeners
-        //m_interceptor.notifyTopicPublished(msg, clientID, username);
+        try {
+            byte[] payload = readBytesAndRewind(evt.getPayload());
 
-        sendPubComp(clientID, messageID);
+            MqttPublishMessage clone = MqttMessageBuilders.publish()
+                    .messageId(messageID).qos(evt.getQos()).payload(Unpooled.wrappedBuffer(payload))
+                    .retained(evt.isRetained()).topicName(topic.toString()).build();
+
+            InterceptPublishMessage im = new InterceptPublishMessage(clone, clientID, username);
+
+            bus.publish(im);
+
+            sendPubComp(clientID, messageID);
+        } catch (Throwable t) {
+            LOG.error(t.toString(), t);
+        }
     }
 
     private void sendPubRec(String clientID, int messageID) {

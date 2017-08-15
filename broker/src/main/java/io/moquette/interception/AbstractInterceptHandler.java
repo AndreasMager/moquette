@@ -26,10 +26,12 @@ import io.moquette.interception.messages.InterceptSubscribeMessage;
 import io.moquette.interception.messages.InterceptUnsubscribeMessage;
 import io.moquette.interception.messages.WipeSubscriptionsMessage;
 import io.moquette.server.Server;
+import io.moquette.spi.impl.ProtocolProcessor;
 
 /**
- * Basic abstract class usefull to avoid empty methods creation in subclasses.
+ * Use {@link ProtocolProcessor#getBus()}
  */
+@Deprecated()
 public abstract class AbstractInterceptHandler implements InterceptHandler {
 
     protected final HazelcastInstance hz;

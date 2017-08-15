@@ -16,14 +16,18 @@
 
 package io.moquette.spi.impl;
 
+import io.moquette.interception.RxBus;
+import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.server.ConnectionDescriptorStore;
 import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.IMessagesStore;
 import io.moquette.spi.impl.subscriptions.Subscription;
 import io.moquette.spi.impl.subscriptions.Topic;
 import io.moquette.spi.security.IAuthorizator;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.MqttFixedHeader;
+import io.netty.handler.codec.mqtt.MqttMessageBuilders;
 import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttPubAckMessage;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
@@ -33,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.UUID;
 import static io.moquette.spi.impl.ProtocolProcessor.asStoredMessage;
+import static io.moquette.spi.impl.Utils.readBytesAndRewind;
 import static io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader.from;
 import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 
@@ -41,15 +46,13 @@ class Qos1PublishHandler extends QosPublishHandler {
     private static final Logger LOG = LoggerFactory.getLogger(Qos1PublishHandler.class);
 
     private final IMessagesStore m_messagesStore;
-    private final BrokerInterceptor m_interceptor;
     private final ConnectionDescriptorStore connectionDescriptors;
     private final MessagesPublisher publisher;
 
-    public Qos1PublishHandler(IAuthorizator authorizator, IMessagesStore messagesStore, BrokerInterceptor interceptor,
-                              ConnectionDescriptorStore connectionDescriptors, MessagesPublisher messagesPublisher) {
-        super(authorizator);
+    public Qos1PublishHandler(IAuthorizator authorizator, IMessagesStore messagesStore,
+            ConnectionDescriptorStore connectionDescriptors, MessagesPublisher messagesPublisher, RxBus bus) {
+        super(authorizator, bus);
         this.m_messagesStore = messagesStore;
-        this.m_interceptor = interceptor;
         this.connectionDescriptors = connectionDescriptors;
         this.publisher = messagesPublisher;
     }
@@ -72,7 +75,20 @@ class Qos1PublishHandler extends QosPublishHandler {
 
         this.publisher.publish2Subscribers(toStoreMsg, topic, messageID);
 
-        sendPubAck(clientID, messageID);
+        try {
+            byte[] payload = readBytesAndRewind(msg.payload());
+
+            MqttPublishMessage clone = MqttMessageBuilders.publish()
+                    .messageId(messageID).qos(msg.fixedHeader().qosLevel()).payload(Unpooled.wrappedBuffer(payload))
+                    .retained(msg.fixedHeader().isRetain()).topicName(topic.toString()).build();
+
+            InterceptPublishMessage im = new InterceptPublishMessage(clone, clientID, username);
+
+            bus.publish(im);
+            sendPubAck(clientID, messageID);
+        } catch (Throwable t) {
+            LOG.error(t.toString(), t);
+        }
 
         if (msg.fixedHeader().isRetain()) {
             if (!msg.payload().isReadable()) {
@@ -82,8 +98,6 @@ class Qos1PublishHandler extends QosPublishHandler {
                 m_messagesStore.storeRetained(topic, toStoreMsg);
             }
         }
-
-        m_interceptor.notifyTopicPublished(msg, topic, clientID, username);
     }
 
     private void sendPubAck(String clientId, int messageID) {

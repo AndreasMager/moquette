@@ -16,29 +16,33 @@
 
 package io.moquette.spi.impl;
 
+import io.moquette.interception.RxBus;
+import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.IMessagesStore;
 import io.moquette.spi.impl.subscriptions.Topic;
 import io.moquette.spi.security.IAuthorizator;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.handler.codec.mqtt.MqttMessageBuilders;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import static io.moquette.spi.impl.ProtocolProcessor.asStoredMessage;
+import static io.moquette.spi.impl.Utils.readBytesAndRewind;
 
 class Qos0PublishHandler extends QosPublishHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(Qos0PublishHandler.class);
 
     private final IMessagesStore m_messagesStore;
-    private final BrokerInterceptor m_interceptor;
     private final MessagesPublisher publisher;
 
-    public Qos0PublishHandler(IAuthorizator authorizator, IMessagesStore messagesStore, BrokerInterceptor interceptor,
-                              MessagesPublisher messagesPublisher) {
-        super(authorizator);
+    public Qos0PublishHandler(IAuthorizator authorizator, IMessagesStore messagesStore,
+            MessagesPublisher messagesPublisher, RxBus bus) {
+        super(authorizator, bus);
         this.m_messagesStore = messagesStore;
-        this.m_interceptor = interceptor;
         this.publisher = messagesPublisher;
     }
 
@@ -58,6 +62,20 @@ class Qos0PublishHandler extends QosPublishHandler {
 
         this.publisher.publish2Subscribers(toStoreMsg, topic);
 
+        try {
+            byte[] payload = readBytesAndRewind(msg.payload());
+
+            MqttPublishMessage clone = MqttMessageBuilders.publish().qos(msg.fixedHeader().qosLevel())
+                    .payload(Unpooled.wrappedBuffer(payload)).retained(msg.fixedHeader().isRetain())
+                    .topicName(topic.toString()).build();
+
+            InterceptPublishMessage im = new InterceptPublishMessage(clone, clientID, username);
+
+            bus.publish(im);
+        } catch (Throwable t) {
+            LOG.error(t.toString(), t);
+        }
+
         if (msg.fixedHeader().isRetain()) {
             if (!msg.payload().isReadable()) {
                 m_messagesStore.cleanRetained(topic);
@@ -67,7 +85,5 @@ class Qos0PublishHandler extends QosPublishHandler {
                 m_messagesStore.storeRetained(topic, toStoreMsg);
             }
         }
-
-        m_interceptor.notifyTopicPublished(msg, topic, clientID, username);
     }
 }

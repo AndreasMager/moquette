@@ -16,7 +16,6 @@
 
 package io.moquette.spi.impl;
 
-import io.moquette.interception.InterceptHandler;
 import io.moquette.persistence.MemoryStorageService;
 import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.IMessagesStore;
@@ -56,10 +55,6 @@ public class ProtocolProcessorTest extends AbstractProtocolProcessorCommonUtils 
     static final String EVIL_TEST_USER = "eviluser";
     static final String EVIL_TEST_PWD = "unsecret";
 
-    static final List<InterceptHandler> EMPTY_OBSERVERS = Collections.emptyList();
-    static final BrokerInterceptor NO_OBSERVERS_INTERCEPTOR = new BrokerInterceptor(EMPTY_OBSERVERS);
-
-
     @Before
     public void setUp() throws InterruptedException {
         initializeProcessorAndSubsystems();
@@ -85,8 +80,7 @@ public class ProtocolProcessorTest extends AbstractProtocolProcessorCommonUtils 
         // simulate a connect that register a clientID to an IoSession
         MemoryStorageService storageService = new MemoryStorageService(null, null);
         subs.init(storageService.sessionsStore());
-        m_processor.init(subs, m_messagesStore, m_sessionStore, null, true, new PermitAllAuthorizator(),
-                NO_OBSERVERS_INTERCEPTOR);
+        m_processor.init(subs, m_messagesStore, m_sessionStore, null, true, new PermitAllAuthorizator());
 
         connect_v3_1();
 
@@ -121,8 +115,7 @@ public class ProtocolProcessorTest extends AbstractProtocolProcessorCommonUtils 
         // simulate a connect that register a clientID to an IoSession
         MemoryStorageService storageService = new MemoryStorageService(null, null);
         subs.init(storageService.sessionsStore());
-        m_processor.init(subs, m_messagesStore, m_sessionStore, null, true, new PermitAllAuthorizator(),
-                NO_OBSERVERS_INTERCEPTOR);
+        m_processor.init(subs, m_messagesStore, m_sessionStore, null, true, new PermitAllAuthorizator());
 
         EmbeddedChannel firstReceiverChannel = new EmbeddedChannel();
         MqttConnectMessage connectMessage = MqttMessageBuilders.connect().protocolVersion(MqttVersion.MQTT_3_1)
@@ -174,8 +167,7 @@ public class ProtocolProcessorTest extends AbstractProtocolProcessorCommonUtils 
         when(mockAuthorizator.canRead(eq(new Topic(FAKE_TOPIC)), eq(fakeUserName), eq(FAKE_CLIENT_ID)))
             .thenReturn(false);
 
-        m_processor.init(subscriptions, m_messagesStore, m_sessionStore, m_mockAuthenticator, true, mockAuthorizator,
-                NO_OBSERVERS_INTERCEPTOR);
+        m_processor.init(subscriptions, m_messagesStore, m_sessionStore, m_mockAuthenticator, true, mockAuthorizator);
 
         connect();
 
@@ -245,8 +237,7 @@ public class ProtocolProcessorTest extends AbstractProtocolProcessorCommonUtils 
         subs.init(storageService.sessionsStore());
 
         // simulate a connect that register a clientID to an IoSession
-        m_processor.init(subs, m_messagesStore, m_sessionStore, null, true, new PermitAllAuthorizator(),
-                NO_OBSERVERS_INTERCEPTOR);
+        m_processor.init(subs, m_messagesStore, m_sessionStore, null, true, new PermitAllAuthorizator());
         connect_v3_1_asClient(FAKE_PUBLISHER_ID);
         publishToAs(FAKE_PUBLISHER_ID, FAKE_TOPIC, AT_MOST_ONCE, true);
         NettyUtils.cleanSession(m_channel, false);
@@ -269,8 +260,7 @@ public class ProtocolProcessorTest extends AbstractProtocolProcessorCommonUtils 
         retainedMessage.setClientID(FAKE_PUBLISHER_ID);
         m_messagesStore.storeRetained(new Topic("/topic"), retainedMessage);
 
-        m_processor.init(subs, m_messagesStore, m_sessionStore, null, true, new PermitAllAuthorizator(),
-                NO_OBSERVERS_INTERCEPTOR);
+        m_processor.init(subs, m_messagesStore, m_sessionStore, null, true, new PermitAllAuthorizator());
 
         connect_v3_1_asClient(FAKE_PUBLISHER_ID);
 
@@ -289,8 +279,7 @@ public class ProtocolProcessorTest extends AbstractProtocolProcessorCommonUtils 
         List<Subscription> inactiveSubscriptions = Collections.singletonList(inactiveSub);
         when(mockedSubscriptions.matches(eq(new Topic("/topic")))).thenReturn(inactiveSubscriptions);
         m_processor = new ProtocolProcessor();
-        m_processor.init(mockedSubscriptions, m_messagesStore, m_sessionStore, null, true, new PermitAllAuthorizator(),
-                NO_OBSERVERS_INTERCEPTOR);
+        m_processor.init(mockedSubscriptions, m_messagesStore, m_sessionStore, null, true, new PermitAllAuthorizator());
 
         // Exercise
         connectAsClient("Publisher");

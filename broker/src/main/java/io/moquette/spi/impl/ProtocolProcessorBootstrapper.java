@@ -30,7 +30,6 @@ import io.moquette.spi.impl.security.*;
 import io.moquette.spi.impl.subscriptions.CTrieSubscriptionDirectory;
 import io.moquette.spi.impl.subscriptions.ISubscriptionsDirectory;
 import io.moquette.spi.impl.subscriptions.Subscription;
-import io.moquette.spi.impl.subscriptions.SubscriptionsDirectory;
 import io.moquette.spi.security.IAuthenticator;
 import io.moquette.spi.security.IAuthorizator;
 import org.slf4j.Logger;
@@ -107,13 +106,12 @@ public class ProtocolProcessorBootstrapper {
         List<InterceptHandler> observers = new ArrayList<>(embeddedObservers);
         String interceptorClassName = props.getProperty(BrokerConstants.INTERCEPT_HANDLER_PROPERTY_NAME);
         if (interceptorClassName != null && !interceptorClassName.isEmpty()) {
+            LOG.warn("Flag: {} is deprecated", BrokerConstants.INTERCEPT_HANDLER_PROPERTY_NAME);
             InterceptHandler handler = loadClass(interceptorClassName, InterceptHandler.class, Server.class, server);
             if (handler != null) {
                 observers.add(handler);
             }
         }
-        BrokerInterceptor interceptor = new BrokerInterceptor(props, observers);
-
         LOG.info("Initializing subscriptions store...");
         ISubscriptionsDirectory subscriptions = new CTrieSubscriptionDirectory();
         subscriptions.init(m_sessionsStore);
@@ -167,8 +165,10 @@ public class ProtocolProcessorBootstrapper {
         boolean allowZeroByteClientId = Boolean
                 .parseBoolean(props.getProperty(BrokerConstants.ALLOW_ZERO_BYTE_CLIENT_ID_PROPERTY_NAME, "false"));
         m_processor.init(connectionDescriptors, subscriptions, messagesStore, m_sessionsStore, authenticator,
-                allowAnonymous, allowZeroByteClientId, authorizator, interceptor,
+                allowAnonymous, allowZeroByteClientId, authorizator,
                 props.getProperty(BrokerConstants.PORT_PROPERTY_NAME));
+
+        observers.forEach(m_processor::addInterceptHandler);
         return m_processor;
     }
 
@@ -249,8 +249,6 @@ public class ProtocolProcessorBootstrapper {
     public void shutdown() {
         if (storeShutdown != null)
             storeShutdown.run();
-//        if (m_interceptor != null)
-//            m_interceptor.stop();
     }
 
     public ConnectionDescriptorStore getConnectionDescriptors() {

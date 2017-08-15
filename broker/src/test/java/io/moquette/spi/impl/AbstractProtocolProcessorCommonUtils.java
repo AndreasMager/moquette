@@ -15,7 +15,6 @@
  */
 package io.moquette.spi.impl;
 
-import io.moquette.interception.InterceptHandler;
 import io.moquette.persistence.MemoryStorageService;
 import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.IMessagesStore;
@@ -45,8 +44,6 @@ abstract class AbstractProtocolProcessorCommonUtils {
     static final String TEST_USER = "fakeuser";
     static final String TEST_PWD = "fakepwd";
 
-    static final List<InterceptHandler> EMPTY_OBSERVERS = Collections.emptyList();
-    static final BrokerInterceptor NO_OBSERVERS_INTERCEPTOR = new BrokerInterceptor(EMPTY_OBSERVERS);
     public static final String HELLO_WORLD_MQTT = "Hello world MQTT!!";
 
     EmbeddedChannel m_channel;
@@ -83,7 +80,7 @@ abstract class AbstractProtocolProcessorCommonUtils {
 
         m_processor = new ProtocolProcessor();
         m_processor.init(subscriptions, m_messagesStore, m_sessionStore, m_mockAuthenticator, true,
-            new PermitAllAuthorizator(), NO_OBSERVERS_INTERCEPTOR);
+            new PermitAllAuthorizator());
     }
 
     protected void verifyNoPublishIsReceived() {
