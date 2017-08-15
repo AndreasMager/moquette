@@ -111,6 +111,7 @@ public class ProtocolProcessorBootstrapper {
         List<InterceptHandler> observers = new ArrayList<>(embeddedObservers);
         String interceptorClassName = props.getProperty(BrokerConstants.INTERCEPT_HANDLER_PROPERTY_NAME);
         if (interceptorClassName != null && !interceptorClassName.isEmpty()) {
+            LOG.warn("Flag: {} is deprecated", BrokerConstants.INTERCEPT_HANDLER_PROPERTY_NAME);
             InterceptHandler handler = loadClass(interceptorClassName, InterceptHandler.class, Server.class, server);
             if (handler != null) {
                 observers.add(handler);
@@ -171,6 +172,8 @@ public class ProtocolProcessorBootstrapper {
         m_processor.init(connectionDescriptors, subscriptions, messagesStore, m_sessionsStore, authenticator,
                 allowAnonymous, allowZeroByteClientId, authorizator,
                 props.getProperty(BrokerConstants.PORT_PROPERTY_NAME));
+
+        observers.forEach(m_processor::addInterceptHandler);
         return m_processor;
     }
 
