@@ -28,7 +28,6 @@ import io.netty.handler.codec.mqtt.MqttFixedHeader;
 import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttPubAckMessage;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
-import org.apache.log4j.lf5.viewer.configure.MRUFileManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
