@@ -26,6 +26,7 @@ import io.moquette.spi.ISessionsStore;
 import io.moquette.spi.impl.subscriptions.ISubscriptionsDirectory;
 import io.moquette.spi.impl.subscriptions.Topic;
 import io.moquette.spi.security.IAuthorizator;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.*;
 import org.slf4j.Logger;
@@ -34,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import static io.moquette.spi.impl.DebugUtils.payload2Str;
 import static io.moquette.spi.impl.ProtocolProcessor.asStoredMessage;
 import static io.moquette.spi.impl.Utils.messageId;
+import static io.moquette.spi.impl.Utils.readBytesAndRewind;
 import static io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader.from;
 import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 
@@ -122,9 +124,15 @@ class Qos2PublishHandler extends QosPublishHandler {
         }
 
         try {
-            bus.publish(new InterceptPublishMessage(MqttMessageBuilders.publish().messageId(messageID).qos(evt.getQos())
-                    .payload(evt.getPayload()).retained(evt.isRetained()).topicName(topic.toString()).build(), clientID,
-                    username));
+            byte[] payload = readBytesAndRewind(evt.getPayload());
+
+            MqttPublishMessage clone = MqttMessageBuilders.publish()
+                    .messageId(messageID).qos(evt.getQos()).payload(Unpooled.wrappedBuffer(payload))
+                    .retained(evt.isRetained()).topicName(topic.toString()).build();
+
+            InterceptPublishMessage im = new InterceptPublishMessage(clone, clientID, username);
+
+            bus.publish(im);
 
             sendPubComp(clientID, messageID);
         } catch (Throwable t) {

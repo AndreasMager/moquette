@@ -23,8 +23,10 @@ import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.IMessagesStore;
 import io.moquette.spi.impl.subscriptions.Topic;
 import io.moquette.spi.security.IAuthorizator;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.mqtt.MqttFixedHeader;
+import io.netty.handler.codec.mqtt.MqttMessageBuilders;
 import io.netty.handler.codec.mqtt.MqttMessageType;
 import io.netty.handler.codec.mqtt.MqttPubAckMessage;
 import io.netty.handler.codec.mqtt.MqttPublishMessage;
@@ -32,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static io.moquette.spi.impl.ProtocolProcessor.asStoredMessage;
+import static io.moquette.spi.impl.Utils.readBytesAndRewind;
 import static io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader.from;
 import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 
@@ -70,7 +73,15 @@ class Qos1PublishHandler extends QosPublishHandler {
         this.publisher.publish2Subscribers(toStoreMsg, topic, messageID);
 
         try {
-            bus.publish(new InterceptPublishMessage(msg, clientID, username));
+            byte[] payload = readBytesAndRewind(msg.payload());
+
+            MqttPublishMessage clone = MqttMessageBuilders.publish()
+                    .messageId(messageID).qos(msg.fixedHeader().qosLevel()).payload(Unpooled.wrappedBuffer(payload))
+                    .retained(msg.fixedHeader().isRetain()).topicName(topic.toString()).build();
+
+            InterceptPublishMessage im = new InterceptPublishMessage(clone, clientID, username);
+
+            bus.publish(im);
             sendPubAck(clientID, messageID);
         } catch (Throwable t) {
             LOG.error(t.toString(), t);
