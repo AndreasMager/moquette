@@ -16,17 +16,12 @@
 
 package io.moquette.server;
 
-import com.hazelcast.config.ClasspathXmlConfig;
-import com.hazelcast.config.Config;
-import com.hazelcast.config.FileSystemXmlConfig;
-import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceNotActiveException;
-import com.hazelcast.core.ITopic;
 import io.moquette.BrokerConstants;
 import io.moquette.connections.IConnectionsManager;
 import io.moquette.interception.HazelcastInterceptHandler;
-import io.moquette.interception.HazelcastMsg;
+import io.moquette.interception.HazelcastRXHandler;
 import io.moquette.interception.InterceptHandler;
 import io.moquette.server.config.*;
 import io.moquette.server.netty.NettyAcceptor;
@@ -41,7 +36,6 @@ import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -182,7 +176,7 @@ public class Server {
         if (handlerProp != null) {
             config.setProperty(BrokerConstants.INTERCEPT_HANDLER_PROPERTY_NAME, handlerProp);
         }
-        configureCluster(config);
+        configureCluster();
         final String persistencePath = config.getProperty(BrokerConstants.PERSISTENT_STORE_PROPERTY_NAME);
         LOG.info("Configuring Using persistent store file, path={}", persistencePath);
         m_processorBootstrapper = new ProtocolProcessorBootstrapper();
@@ -216,33 +210,17 @@ public class Server {
         m_initialized = true;
     }
 
-    private void configureCluster(IConfig config) throws FileNotFoundException {
+    @Deprecated
+    private void configureCluster() {
         LOG.info("Configuring embedded Hazelcast instance");
+
         String interceptHandlerClassname = config.getProperty(BrokerConstants.INTERCEPT_HANDLER_PROPERTY_NAME);
         if (interceptHandlerClassname == null || !HZ_INTERCEPT_HANDLER.equals(interceptHandlerClassname)) {
             LOG.info("There are no Hazelcast intercept handlers. The server won't start a Hazelcast instance.");
             return;
         }
-        String hzConfigPath = config.getProperty(BrokerConstants.HAZELCAST_CONFIGURATION);
-        if (hzConfigPath != null) {
-            boolean isHzConfigOnClasspath = this.getClass().getClassLoader().getResource(hzConfigPath) != null;
-            Config hzconfig = isHzConfigOnClasspath
-                    ? new ClasspathXmlConfig(hzConfigPath)
-                    : new FileSystemXmlConfig(hzConfigPath);
-            LOG.info("Starting Hazelcast instance. ConfigurationFile={}", hzconfig);
-            hazelcastInstance = Hazelcast.newHazelcastInstance(hzconfig);
-        } else {
-            LOG.info("Starting Hazelcast instance with default configuration");
-            hazelcastInstance = Hazelcast.newHazelcastInstance();
-        }
-        listenOnHazelCastMsg();
-    }
 
-    private void listenOnHazelCastMsg() {
-        LOG.info("Subscribing to Hazelcast topic. TopicName={}", "moquette");
-        HazelcastInstance hz = getHazelcastInstance();
-        ITopic<HazelcastMsg> topic = hz.getTopic("moquette");
-        topic.addMessageListener(new HazelcastListener(this));
+        HazelcastRXHandler.initHZ(this);
     }
 
     public HazelcastInstance getHazelcastInstance() {
@@ -361,6 +339,10 @@ public class Server {
 
     public List<Daemon> getDeamons() {
         return daemons;
+    }
+
+    public void setHazelcastInstance(HazelcastInstance newHazelcastInstance) {
+        this.hazelcastInstance = newHazelcastInstance;
     }
 
     public IConfig getConfig() {
