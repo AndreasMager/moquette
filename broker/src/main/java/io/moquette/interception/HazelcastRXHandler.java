@@ -20,24 +20,49 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ITopic;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.server.Server;
+import io.moquette.spi.impl.Daemon;
 import io.netty.buffer.ByteBuf;
+import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static io.moquette.spi.impl.Utils.readBytesAndRewind;
 
-public class HazelcastRXHandler {
+public class HazelcastRXHandler implements Daemon {
 
     private static final Logger LOG = LoggerFactory.getLogger(HazelcastRXHandler.class);
 
+    private Disposable sub;
+
+    private Server server;
+
     public HazelcastRXHandler(Server server) {
+    }
+
+    @Override
+    public void init(Server server) {
+        this.server = server;
+    }
+
+    @Override
+    public void start() {
         HazelcastInstance hz = server.getHazelcastInstance();
 
-        server.getProcessor().getBus().getEvents()
+        sub = server.getProcessor().getBus().getEvents()
             .filter(msg -> msg instanceof InterceptPublishMessage)
             .cast(InterceptPublishMessage.class)
             .observeOn(Schedulers.single()) // Don't pause netty eventloop thread
             .subscribe(msg ->  onPublish(hz, msg));
+    }
+
+    @Override
+    public void stop() {
+        sub.dispose();
+    }
+
+    @Override
+    public void destroy() {
+        server = null;
     }
 
     static void onPublish(HazelcastInstance hz, InterceptPublishMessage msg) {

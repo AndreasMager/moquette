@@ -30,6 +30,7 @@ import io.moquette.interception.HazelcastMsg;
 import io.moquette.interception.InterceptHandler;
 import io.moquette.server.config.*;
 import io.moquette.server.netty.NettyAcceptor;
+import io.moquette.spi.impl.Daemon;
 import io.moquette.spi.impl.ProtocolProcessor;
 import io.moquette.spi.impl.ProtocolProcessorBootstrapper;
 import io.moquette.spi.impl.subscriptions.Subscription;
@@ -43,6 +44,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.Executors;
@@ -70,6 +72,8 @@ public class Server {
     private ProtocolProcessorBootstrapper m_processorBootstrapper;
 
     private ScheduledExecutorService scheduler;
+
+    private final List<Daemon> daemons = new LinkedList<>();
 
     public static void main(String[] args) throws IOException {
         final Server server = new Server();
@@ -192,6 +196,19 @@ public class Server {
         m_acceptor.initialize(processor, config, sslCtxCreator);
         m_processor = processor;
 
+        LOG.info("Load Classes...");
+        String autoLoadClassNames = config.getProperty(BrokerConstants.AUTO_LOAD_CLASS);
+        if (autoLoadClassNames != null && !autoLoadClassNames.isEmpty()) {
+            for (String autoLoadClassName : autoLoadClassNames.split(",")) {
+                LOG.info("Load: {}", autoLoadClassName);
+                daemons.add(
+                        ProtocolProcessorBootstrapper.loadClass(autoLoadClassName, Daemon.class, Server.class, this));
+            }
+        }
+
+        daemons.forEach(d -> d.init(this));
+        daemons.forEach(Daemon::start);
+
         LOG.info("Moquette server has been initialized successfully");
         m_initialized = true;
     }
@@ -252,6 +269,10 @@ public class Server {
     }
 
     public void stopServer() {
+        LOG.info("Unload Classes...");
+        daemons.forEach(Daemon::stop);
+        daemons.forEach(Daemon::destroy);
+
         LOG.info("Unbinding server from the configured ports");
         m_acceptor.close();
         LOG.trace("Stopping MQTT protocol processor");
@@ -290,6 +311,7 @@ public class Server {
      * @param interceptHandler
      *            the handler to add.
      */
+    @Deprecated
     public void addInterceptHandler(InterceptHandler interceptHandler) {
         if (!m_initialized) {
             LOG.error("Moquette is not started, MQTT message interceptor cannot be added. InterceptorId={}",
@@ -306,6 +328,7 @@ public class Server {
      * @param interceptHandler
      *            the handler to remove.
      */
+    @Deprecated
     public void removeInterceptHandler(InterceptHandler interceptHandler) {
         if (!m_initialized) {
             LOG.error("Moquette is not started, MQTT message interceptor cannot be removed. InterceptorId={}",
@@ -331,5 +354,9 @@ public class Server {
 
     public ScheduledExecutorService getScheduler() {
         return scheduler;
+    }
+
+    public List<Daemon> getDeamons() {
+        return daemons;
     }
 }

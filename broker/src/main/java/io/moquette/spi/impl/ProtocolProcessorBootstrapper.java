@@ -39,6 +39,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -208,14 +209,14 @@ public class ProtocolProcessorBootstrapper {
     }
 
     @SuppressWarnings("unchecked")
-    private <T, U> T loadClass(String className, Class<T> intrface, Class<U> constructorArgClass, U props) {
+    public static <T, U> T loadClass(String className, Class<T> intrface, Class<U> constructorArgClass, U props) {
         T instance = null;
         try {
             // check if constructor with constructor arg class parameter
             // exists
             LOG.info("Invoking constructor with {} argument. ClassName={}, interfaceName={}",
                     constructorArgClass.getName(), className, intrface.getName());
-            instance = this.getClass().getClassLoader()
+            instance = ProtocolProcessorBootstrapper.class.getClassLoader()
                 .loadClass(className)
                 .asSubclass(intrface)
                 .getConstructor(constructorArgClass)
@@ -229,7 +230,7 @@ public class ProtocolProcessorBootstrapper {
                 LOG.info("Invoking default constructor. ClassName={}, interfaceName={}",
                         className, intrface.getName());
                 // fallback to default constructor
-                instance = this.getClass().getClassLoader()
+                instance = ProtocolProcessorBootstrapper.class.getClassLoader()
                     .loadClass(className)
                     .asSubclass(intrface)
                     .newInstance();
