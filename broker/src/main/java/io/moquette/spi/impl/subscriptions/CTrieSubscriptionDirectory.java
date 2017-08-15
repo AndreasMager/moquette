@@ -29,7 +29,7 @@ public class CTrieSubscriptionDirectory implements ISubscriptionsDirectory {
 
     private static final Logger LOG = LoggerFactory.getLogger(CTrieSubscriptionDirectory.class);
 
-    private static final Token ROOT = new Token("root");
+    private static final String ROOT = "root";
 
     protected INode root;
     private volatile ISubscriptionsStore subscriptionsStore;
@@ -116,7 +116,7 @@ public class CTrieSubscriptionDirectory implements ISubscriptionsDirectory {
 
     Optional<CNode> lookup(Topic topic) {
         INode inode = this.root;
-        Token token = topic.headToken();
+        String token = topic.headToken();
         while (!topic.isEmpty() && (inode.mainNode().anyChildrenMatch(token))) {
             topic = topic.exceptHeadToken();
             inode = inode.mainNode().childOf(token);
@@ -165,7 +165,7 @@ public class CTrieSubscriptionDirectory implements ISubscriptionsDirectory {
 
     Set<ClientTopicCouple> recursiveMatch(Topic topic, INode inode) {
         CNode cnode = inode.mainNode();
-        if (cnode.token == Token.MULTI) {
+        if (cnode.token == Tokens.MULTI) {
             return cnode.subscriptions;
         }
         if (topic.isEmpty()) {
@@ -174,8 +174,8 @@ public class CTrieSubscriptionDirectory implements ISubscriptionsDirectory {
         if (cnode instanceof TNode) {
             return Collections.emptySet();
         }
-        final Token token = topic.headToken();
-        if (!(cnode.token == Token.SINGLE || cnode.token.equals(token) || cnode.token == ROOT)) {
+        final String token = topic.headToken();
+        if (!(cnode.token == Tokens.SINGLE || cnode.token.equals(token) || cnode.token == ROOT)) {
             return Collections.emptySet();
         }
         Topic remainingTopic = (cnode.token == ROOT) ? topic : topic.exceptHeadToken();
@@ -198,7 +198,7 @@ public class CTrieSubscriptionDirectory implements ISubscriptionsDirectory {
     }
 
     private Action insert(String clientId, Topic topic, final INode inode, Topic fullpath) {
-        Token token = topic.headToken();
+        String token = topic.headToken();
         if (!topic.isEmpty() && inode.mainNode().anyChildrenMatch(token)) {
             Topic remainingTopic = topic.exceptHeadToken();
             INode nextInode = inode.mainNode().childOf(token);
@@ -231,7 +231,7 @@ public class CTrieSubscriptionDirectory implements ISubscriptionsDirectory {
         return inode.compareAndSet(cnode, updatedCnode) ? Action.OK : Action.REPEAT;
     }
 
-    private INode createLeafNodes(String clientId, Topic fullpath, Token token) {
+    private INode createLeafNodes(String clientId, Topic fullpath, String token) {
         CNode newLeafCnode = new CNode();
         newLeafCnode.token = token;
         newLeafCnode.addSubscription(clientId, fullpath);
@@ -260,7 +260,7 @@ public class CTrieSubscriptionDirectory implements ISubscriptionsDirectory {
     }
 
     private Action remove(String clientId, Topic topic, INode inode) {
-        Token token = topic.headToken();
+        String token = topic.headToken();
         if (!topic.isEmpty() && (inode.mainNode().anyChildrenMatch(token))) {
             Topic remainingTopic = topic.exceptHeadToken();
             INode nextInode = inode.mainNode().childOf(token);

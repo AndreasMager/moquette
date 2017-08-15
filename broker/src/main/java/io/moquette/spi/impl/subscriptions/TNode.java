@@ -18,7 +18,7 @@ package io.moquette.spi.impl.subscriptions;
 class TNode extends CNode {
 
     @Override
-    INode childOf(Token token) {
+    INode childOf(String token) {
         throw new IllegalStateException("Can't be invoked on TNode");
     }
 
@@ -53,7 +53,7 @@ class TNode extends CNode {
     }
 
     @Override
-    boolean anyChildrenMatch(Token token) {
+    boolean anyChildrenMatch(String token) {
         return false;
     }
 }

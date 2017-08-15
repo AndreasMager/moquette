@@ -21,7 +21,7 @@ import java.util.*;
 
 class CNode {
 
-    Token token;
+    String token;
     private List<INode> children;
     Set<ClientTopicCouple> subscriptions = new HashSet<>();
 
@@ -33,13 +33,13 @@ class CNode {
     }
 
     //Copy constructor
-    private CNode(Token token, List<INode> children, Set<ClientTopicCouple> subscriptions) {
+    private CNode(String token, List<INode> children, Set<ClientTopicCouple> subscriptions) {
         this.token = token;
         this.children = children;
         this.subscriptions = subscriptions;
     }
 
-    boolean anyChildrenMatch(Token token) {
+    boolean anyChildrenMatch(String token) {
         for (INode iNode : children) {
             final CNode child = iNode.mainNode();
             if (child.equals(token)) {
@@ -53,7 +53,7 @@ class CNode {
         return this.children;
     }
 
-    INode childOf(Token token) {
+    INode childOf(String token) {
         for (INode iNode : children) {
             final CNode child = iNode.mainNode();
             if (child.equals(token)) {
@@ -63,7 +63,7 @@ class CNode {
         throw new IllegalArgumentException("Asked for a token that doesn't exists in any child [" + token + "]");
     }
 
-    private boolean equals(Token token) {
+    private boolean equals(String token) {
         if (this.token == null) {
             return false;
         }
@@ -115,7 +115,7 @@ class CNode {
         this.subscriptions.removeAll(toRemove);
     }
 
-//    public List<INode> childrenMatching(Token token) {
+//    public List<INode> childrenMatching(String token) {
 //        List<INode> res = new ArrayList<>();
 //        for (INode iNode : children) {
 //            final CNode child = iNode.mainNode();
