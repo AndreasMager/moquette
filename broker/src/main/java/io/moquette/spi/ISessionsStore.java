@@ -17,9 +17,11 @@
 package io.moquette.spi;
 
 import io.moquette.spi.IMessagesStore.StoredMessage;
-
 import java.util.Collection;
 import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Store used to handle the persistence of the subscriptions tree.
@@ -39,7 +41,7 @@ public interface ISessionsStore {
      */
     boolean contains(String clientID);
 
-    ClientSession createNewSession(String clientID, boolean cleanSession);
+    ClientSession createNewSession(String clientID, boolean cleanSession, long now);
 
     /**
      * @param clientID
@@ -47,13 +49,6 @@ public interface ISessionsStore {
      * @return the session for the given clientID, null if not found.
      */
     ClientSession sessionForClient(String clientID);
-
-    /**
-     * Returns all the sessions
-     *
-     * @return the collection of all stored client sessions.
-     */
-    Collection<ClientSession> getAllSessions();
 
     StoredMessage inFlightAck(String clientID, int messageID);
 
@@ -132,4 +127,48 @@ public interface ISessionsStore {
     int getSecondPhaseAckPendingMessages(String clientID);
 
     void cleanSession(String clientID);
+
+    Set<String> getClientIDs();
+
+    void remove(String clientId);
+
+    void updateValidity(String clientID, long now);
+
+    default int size() {
+        return getClientIDs().size();
+    }
+
+    default void remove(Iterable<String> clientIDs) {
+        clientIDs
+            .forEach(this::remove);
+    }
+
+    /**
+     * Returns all the sessions
+     *
+     * @return the collection of all stored client sessions.
+     */
+    default Set<ClientSession> getAllSessions() {
+        return getClientIDs()
+            .stream()
+            .map(this::sessionForClient)
+            .collect(Collectors.toSet());
+    }
+
+    default Set<String> getExpired(long now, long ttl, TimeUnit unit) {
+        return getAllSessions()
+                .stream()
+                .filter(session -> now > session.getLastContact() + unit.toMillis(ttl))
+                .map(ClientSession::getClientID)
+                .collect(Collectors.toSet());
+    }
+
+    default Set<String> getOldest(int count) {
+        return getAllSessions()
+            .stream()
+            .sorted((session, session2) -> Long.compare(session.getLastContact(), session2.getLastContact()))
+            .limit(count)
+            .map(ClientSession::getClientID)
+            .collect(Collectors.toSet());
+    }
 }

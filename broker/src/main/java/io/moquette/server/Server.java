@@ -30,6 +30,7 @@ import io.moquette.interception.HazelcastMsg;
 import io.moquette.interception.InterceptHandler;
 import io.moquette.server.config.*;
 import io.moquette.server.netty.NettyAcceptor;
+import io.moquette.spi.ISessionsStore;
 import io.moquette.spi.impl.ProtocolProcessor;
 import io.moquette.spi.impl.ProtocolProcessorBootstrapper;
 import io.moquette.spi.impl.subscriptions.Subscription;
@@ -47,7 +48,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-
+import java.util.concurrent.TimeUnit;
 import static io.moquette.logging.LoggingUtils.getInterceptorIds;
 
 /**
@@ -192,6 +193,8 @@ public class Server {
         m_acceptor.initialize(processor, config, sslCtxCreator);
         m_processor = processor;
 
+        startSessionHousekeeping(config);
+
         LOG.info("Moquette server has been initialized successfully");
         m_initialized = true;
     }
@@ -314,6 +317,29 @@ public class Server {
         }
         LOG.info("Removing MQTT message interceptor. InterceptorId={}", interceptHandler.getID());
         m_processor.removeInterceptHandler(interceptHandler);
+    }
+
+    private void startSessionHousekeeping(IConfig config) {
+        int ttlInDays = Integer.parseInt(config.getProperty(BrokerConstants.STORAGE_CLASS_SESSION_EXPIRE, "28"));
+        int maxSessions = Integer.parseInt(config.getProperty(BrokerConstants.STORAGE_CLASS_MAX_SESSIONS, "5000"));
+
+        ISessionsStore store = m_processor.getSessionsStore();
+
+        long initalDelay = 0;
+        long delay = 10;
+
+        scheduler.scheduleWithFixedDelay(() -> {
+            try {
+                store.remove(store.getExpired(System.currentTimeMillis(), ttlInDays, TimeUnit.DAYS));
+
+                int tooMuch = store.size() - maxSessions;
+
+                if (tooMuch > 0)
+                    store.remove(store.getOldest(tooMuch));
+            } catch (Exception e) {
+                LOG.error(e.toString(), e);
+            }
+        }, initalDelay, delay, TimeUnit.SECONDS);
     }
 
     /**

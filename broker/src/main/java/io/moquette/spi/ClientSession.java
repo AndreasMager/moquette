@@ -81,6 +81,7 @@ public class ClientSession {
 
     private final ISessionsStore m_sessionsStore;
 
+    // TODO This creates a side effects should be removed. Each call on ISessionsStore.sessionForClient creates a instance of this class
     private Set<Subscription> subscriptions = new HashSet<>();
 
     private final ISubscriptionsStore subscriptionsStore;
@@ -89,12 +90,15 @@ public class ClientSession {
     private final OutboundFlightZone outboundFlightZone;
     private final InboundFlightZone inboundFlightZone;
 
+    private final long lastContact;
+
     public ClientSession(String clientID, ISessionsStore sessionsStore, ISubscriptionsStore subscriptionsStore,
-                         boolean cleanSession) {
+                         boolean cleanSession, long lastContact) {
         this.clientID = clientID;
         this.m_sessionsStore = sessionsStore;
         this.subscriptionsStore = subscriptionsStore;
         this.cleanSession = cleanSession;
+        this.lastContact = lastContact;
         this.outboundFlightZone = new OutboundFlightZone();
         this.inboundFlightZone = new InboundFlightZone();
     }
@@ -238,4 +242,11 @@ public class ClientSession {
         return m_sessionsStore.getInflightMessagesNo(clientID);
     }
 
+    public long getLastContact() {
+        return lastContact;
+    }
+
+    public String getClientID() {
+        return clientID;
+    }
 }

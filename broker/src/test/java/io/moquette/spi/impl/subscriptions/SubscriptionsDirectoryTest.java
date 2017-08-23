@@ -48,8 +48,8 @@ public class SubscriptionsDirectoryTest {
 
         this.subscriptionsStore = this.sessionsStore.subscriptionStore();
 
-        storageService.sessionsStore().createNewSession("FAKE_CLI_ID_1", false);
-        storageService.sessionsStore().createNewSession("FAKE_CLI_ID_2", false);
+        storageService.sessionsStore().createNewSession("FAKE_CLI_ID_1", false, 0);
+        storageService.sessionsStore().createNewSession("FAKE_CLI_ID_2", false, 0);
     }
 
     @Test
@@ -214,7 +214,7 @@ public class SubscriptionsDirectoryTest {
         store = new SubscriptionsDirectory();
         MemoryStorageService memStore = new MemoryStorageService(null, null);
         ISessionsStore aSessionsStore = memStore.sessionsStore();
-        aSessionsStore.createNewSession("FAKE_CLI_ID_1", false);
+        aSessionsStore.createNewSession("FAKE_CLI_ID_1", false, 0);
         store.init(aSessionsStore);
         Subscription sub = new Subscription("FAKE_CLI_ID_1", subscription, MqttQoS.AT_MOST_ONCE);
         aSessionsStore.subscriptionStore().addNewSubscription(sub);
@@ -254,7 +254,7 @@ public class SubscriptionsDirectoryTest {
         ISessionsStore sessionsStore = memStore.sessionsStore();
         aStore.init(sessionsStore);
         // subscribe a not active clientID1 to /topic
-        sessionsStore.createNewSession("FAKE_CLI_ID_1", true);
+        sessionsStore.createNewSession("FAKE_CLI_ID_1", true, 0);
         Subscription slashSub = new Subscription("FAKE_CLI_ID_1", new Topic("/topic"), MqttQoS.AT_MOST_ONCE);
         sessionsStore.subscriptionStore().addNewSubscription(slashSub);
         aStore.add(slashSub.asClientTopicCouple());
@@ -277,11 +277,11 @@ public class SubscriptionsDirectoryTest {
      */
     @Test
     public void duplicatedSubscriptionsWithDifferentQos() {
-        ClientSession session2 = sessionsStore.createNewSession("client2", true);
+        ClientSession session2 = sessionsStore.createNewSession("client2", true, 0);
         Subscription client2Sub = new Subscription("client2", new Topic("client/test/b"), MqttQoS.AT_MOST_ONCE);
         session2.subscribe(client2Sub);
         store.add(client2Sub.asClientTopicCouple());
-        ClientSession session1 = sessionsStore.createNewSession("client1", true);
+        ClientSession session1 = sessionsStore.createNewSession("client1", true, 0);
         Subscription client1SubQoS0 = new Subscription("client1", new Topic("client/test/b"), MqttQoS.AT_MOST_ONCE);
         session1.subscribe(client1SubQoS0);
         store.add(client1SubQoS0.asClientTopicCouple());

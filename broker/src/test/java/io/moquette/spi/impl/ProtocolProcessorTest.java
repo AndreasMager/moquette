@@ -281,7 +281,7 @@ public class ProtocolProcessorTest extends AbstractProtocolProcessorCommonUtils 
     @Test
     public void publishNoPublishToInactiveSession() {
         // create an inactive session for Subscriber
-        m_sessionStore.createNewSession("Subscriber", false);
+        m_sessionStore.createNewSession("Subscriber", false, 0);
 
         ISubscriptionsDirectory mockedSubscriptions = mock(SubscriptionsDirectory.class);
         Subscription inactiveSub = new Subscription("Subscriber", new Topic("/topic"), MqttQoS.AT_LEAST_ONCE);

@@ -206,7 +206,7 @@ public class CTrieSubscriptionDirectoryMatchingTest {
         Subscription sub = new Subscription("Sensor1", asTopic("a/+"), MqttQoS.AT_MOST_ONCE);
         ClientTopicCouple genericSub = sub.asClientTopicCouple();
         this.subscriptionsStore.addNewSubscription(sub);
-        storageService.sessionsStore().createNewSession("Sensor1", false);
+        storageService.sessionsStore().createNewSession("Sensor1", false, 0);
         sut.add(genericSub);
 
         Subscription sub2 = new Subscription("Sensor1", asTopic("a/b"), MqttQoS.AT_MOST_ONCE);
@@ -252,11 +252,11 @@ public class CTrieSubscriptionDirectoryMatchingTest {
      */
     @Test
     public void duplicatedSubscriptionsWithDifferentQos() {
-        ClientSession session2 = sessionsStore.createNewSession("client2", true);
+        ClientSession session2 = sessionsStore.createNewSession("client2", true, 0);
         Subscription client2Sub = new Subscription("client2", asTopic("client/test/b"), MqttQoS.AT_MOST_ONCE);
         session2.subscribe(client2Sub);
         this.sut.add(client2Sub.asClientTopicCouple());
-        ClientSession session1 = sessionsStore.createNewSession("client1", true);
+        ClientSession session1 = sessionsStore.createNewSession("client1", true, 0);
         Subscription client1SubQoS0 = new Subscription("client1", asTopic("client/test/b"), MqttQoS.AT_MOST_ONCE);
         session1.subscribe(client1SubQoS0);
         this.sut.add(client1SubQoS0.asClientTopicCouple());

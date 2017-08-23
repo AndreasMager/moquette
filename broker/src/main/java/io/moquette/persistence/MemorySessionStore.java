@@ -25,7 +25,6 @@ import io.moquette.spi.impl.subscriptions.Subscription;
 import io.moquette.spi.impl.subscriptions.Topic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -50,6 +49,21 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
         Session(String clientID, ClientSession clientSession) {
             this.clientID = clientID;
             this.clientSession = clientSession;
+        }
+
+        public void clean() {
+            // remove also the messages stored of type QoS1/2
+            LOG.info("Removing stored messages with QoS 1 and 2. ClientId={}", clientID);
+
+            secondPhaseStore.clear();
+            outboundFlightMessages.clear();
+            inboundFlightMessages.clear();
+
+            LOG.info("Wiping existing subscriptions. ClientId={}", clientID);
+            subscriptions.clear();
+
+            //remove also the enqueued messages
+            queue.clear();
         }
     }
 
@@ -110,7 +124,7 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
     }
 
     @Override
-    public ClientSession createNewSession(String clientID, boolean cleanSession) {
+    public ClientSession createNewSession(String clientID, boolean cleanSession, long now) {
         LOG.debug("createNewSession for client <{}>", clientID);
         Session session = sessions.get(clientID);
         if (session != null) {
@@ -118,8 +132,8 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
             throw new IllegalArgumentException("Can't create a session with the ID of an already existing" + clientID);
         }
         LOG.debug("clientID {} is a newcome, creating it's empty subscriptions set", clientID);
-        session = new Session(clientID, new ClientSession(clientID, this, this, cleanSession));
-        session.persistentSession.set(new PersistentSession(cleanSession));
+        session = new Session(clientID, new ClientSession(clientID, this, this, cleanSession, now));
+        session.persistentSession.set(new PersistentSession(cleanSession, now));
         sessions.put(clientID, session);
         return session.clientSession;
     }
@@ -132,26 +146,21 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
         }
 
         PersistentSession storedSession = sessions.get(clientID).persistentSession.get();
-        return new ClientSession(clientID, this, this, storedSession.cleanSession);
-    }
-
-    @Override
-    public Collection<ClientSession> getAllSessions() {
-        Collection<ClientSession> result = new ArrayList<>();
-        for (Session entry : sessions.values()) {
-            result.add(new ClientSession(entry.clientID, this, this, entry.persistentSession.get().cleanSession));
-        }
-        return result;
+        return new ClientSession(clientID, this, this, storedSession.cleanSession, storedSession.lastContatct);
     }
 
     @Override
     public void updateCleanStatus(String clientID, boolean cleanSession) {
-        if (!sessions.containsKey(clientID)) {
+        Session session = sessions.get(clientID);
+        if (session == null) {
             LOG.error("Can't find the session for client <{}>", clientID);
             return;
         }
 
-        sessions.get(clientID).persistentSession.set(new PersistentSession(cleanSession));
+        PersistentSession old = session.persistentSession.get();
+        long lastContact = old == null ? 0 : old.lastContatct;
+
+        session.persistentSession.set(new PersistentSession(cleanSession, lastContact));
     }
 
     @Override
@@ -311,20 +320,36 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
             return;
         }
 
-        // remove also the messages stored of type QoS1/2
-        LOG.info("Removing stored messages with QoS 1 and 2. ClientId={}", clientID);
+        session.clean();
+    }
 
-        session.secondPhaseStore.clear();
-        session.outboundFlightMessages.clear();
-        session.inboundFlightMessages.clear();
+    @Override
+    public Set<String> getClientIDs() {
+        return sessions.keySet();
+    }
 
-        LOG.info("Wiping existing subscriptions. ClientId={}", clientID);
-        wipeSubscriptions(clientID);
+    @Override
+    public int size() {
+        return sessions.size();
+    }
 
-        //remove also the enqueued messages
-        dropQueue(clientID);
+    @Override
+    public void remove(String clientID) {
+        cleanSession(clientID);
+        sessions.remove(clientID);
+    }
 
-        // TODO this missing last step breaks the junit test
-        //sessions.remove(clientID);
+    @Override
+    public void updateValidity(String clientID, long now) {
+        Session session = sessions.get(clientID);
+        if (session == null) {
+            LOG.error("Can't find the session for client <{}>", clientID);
+            return;
+        }
+
+        PersistentSession old = session.persistentSession.get();
+        boolean cleanSession = old == null ? true : old.cleanSession;
+
+        session.persistentSession.set(new PersistentSession(cleanSession, now));
     }
 }

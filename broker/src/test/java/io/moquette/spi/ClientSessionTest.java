@@ -41,8 +41,8 @@ public class ClientSessionTest {
         this.sessionsStore = storageService.sessionsStore();
         store.init(sessionsStore);
 
-        session1 = sessionsStore.createNewSession("SESSION_ID_1", true);
-        session2 = sessionsStore.createNewSession("SESSION_ID_2", true);
+        session1 = sessionsStore.createNewSession("SESSION_ID_1", true, 0);
+        session2 = sessionsStore.createNewSession("SESSION_ID_2", true, 0);
     }
 
     @Test
