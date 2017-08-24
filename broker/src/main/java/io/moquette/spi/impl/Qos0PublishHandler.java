@@ -69,7 +69,7 @@ class Qos0PublishHandler extends QosPublishHandler {
                     .payload(Unpooled.wrappedBuffer(payload)).retained(msg.fixedHeader().isRetain())
                     .topicName(topic.toString()).build();
 
-            InterceptPublishMessage im = new InterceptPublishMessage(clone, clientID, username);
+            InterceptPublishMessage im = new InterceptPublishMessage(clone, clientID, username, topic);
 
             bus.publish(im);
         } catch (Throwable t) {

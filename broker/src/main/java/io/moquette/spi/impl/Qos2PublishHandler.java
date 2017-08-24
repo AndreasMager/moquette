@@ -130,7 +130,7 @@ class Qos2PublishHandler extends QosPublishHandler {
                     .messageId(messageID).qos(evt.getQos()).payload(Unpooled.wrappedBuffer(payload))
                     .retained(evt.isRetained()).topicName(topic.toString()).build();
 
-            InterceptPublishMessage im = new InterceptPublishMessage(clone, clientID, username);
+            InterceptPublishMessage im = new InterceptPublishMessage(clone, clientID, username, topic);
 
             bus.publish(im);
 

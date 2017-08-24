@@ -21,7 +21,6 @@ import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.server.ConnectionDescriptorStore;
 import io.moquette.server.netty.NettyUtils;
 import io.moquette.spi.IMessagesStore;
-import io.moquette.spi.impl.subscriptions.Subscription;
 import io.moquette.spi.impl.subscriptions.Topic;
 import io.moquette.spi.security.IAuthorizator;
 import io.netty.buffer.Unpooled;
@@ -34,8 +33,6 @@ import io.netty.handler.codec.mqtt.MqttPublishMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.UUID;
 import static io.moquette.spi.impl.ProtocolProcessor.asStoredMessage;
 import static io.moquette.spi.impl.Utils.readBytesAndRewind;
 import static io.netty.handler.codec.mqtt.MqttMessageIdVariableHeader.from;
@@ -82,7 +79,7 @@ class Qos1PublishHandler extends QosPublishHandler {
                     .messageId(messageID).qos(msg.fixedHeader().qosLevel()).payload(Unpooled.wrappedBuffer(payload))
                     .retained(msg.fixedHeader().isRetain()).topicName(topic.toString()).build();
 
-            InterceptPublishMessage im = new InterceptPublishMessage(clone, clientID, username);
+            InterceptPublishMessage im = new InterceptPublishMessage(clone, clientID, username, topic);
 
             bus.publish(im);
             sendPubAck(clientID, messageID);

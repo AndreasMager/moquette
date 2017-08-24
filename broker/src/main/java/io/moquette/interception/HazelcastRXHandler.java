@@ -18,13 +18,12 @@ package io.moquette.interception;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ITopic;
+import io.moquette.BrokerConstants;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.server.Server;
-import io.netty.buffer.ByteBuf;
 import io.reactivex.schedulers.Schedulers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import static io.moquette.spi.impl.Utils.readBytesAndRewind;
 
 public class HazelcastRXHandler {
 
@@ -35,12 +34,15 @@ public class HazelcastRXHandler {
     public HazelcastRXHandler(Server server) {
         HazelcastInstance hz = server.getHazelcastInstance();
 
+        String topicName = server.getConfig().getProperty(BrokerConstants.HAZELCAST_TOPIC_NAME) == null
+                ? "moquette": server.getConfig().getProperty(BrokerConstants.HAZELCAST_TOPIC_NAME);
+        topic = hz.getTopic(topicName);
 
         server.getProcessor().getBus().getEvents()
             .filter(msg -> msg instanceof InterceptPublishMessage)
             .cast(InterceptPublishMessage.class)
             .observeOn(Schedulers.single()) // Don't pause netty eventloop thread
-            .subscribe(msg ->  onPublish(hz, msg));
+            .subscribe(msg ->  onPublish(topic, msg));
     }
 
     static void onPublish(ITopic<HazelcastMsg> topic, InterceptPublishMessage msg) {

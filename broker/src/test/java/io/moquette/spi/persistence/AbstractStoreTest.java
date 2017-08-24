@@ -33,7 +33,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import static com.jayway.awaitility.Awaitility.await;
+import static org.awaitility.Awaitility.await;
 import static org.assertj.core.api.Assertions.*;
 
 public abstract class AbstractStoreTest {
@@ -135,13 +135,13 @@ public abstract class AbstractStoreTest {
 
         List<Subscription> matcher = Arrays.asList(new Subscription("", new Topic("id1/topic"), MqttQoS.AT_LEAST_ONCE));
 
-        await().until(() -> assertThat(m_messagesStore.searchMatching(matcher))
+        await().untilAsserted(() -> assertThat(m_messagesStore.searchMatching(matcher))
                 .as("The stored must not contain the retained message")
                 .isEmpty());
 
         m_messagesStore.storeRetained(new Topic(publishToStore.getTopic()), publishToStore);
 
-        await().until(() -> assertThat(m_messagesStore.searchMatching(matcher))
+        await().untilAsserted(() -> assertThat(m_messagesStore.searchMatching(matcher))
                 .as("The stored retained message must be present before client's session drop")
                 .isNotEmpty());
 
@@ -169,7 +169,7 @@ public abstract class AbstractStoreTest {
 
         Subscription subscription2 = new Subscription("cid", new Topic("id1/topic"), MqttQoS.AT_MOST_ONCE);
 
-        await().until(() -> {
+        await().untilAsserted(() -> {
             Map<Subscription, Collection<Message>> result = m_messagesStore
                     .searchMatching(Arrays.asList(subscription1, subscription2));
 
@@ -181,7 +181,7 @@ public abstract class AbstractStoreTest {
 
         m_messagesStore.cleanRetained(new Topic("id1/topic2"));
 
-        await().until(() -> {
+        await().untilAsserted(() -> {
             Map<Subscription, Collection<Message>> result = m_messagesStore
                     .searchMatching(Arrays.asList(subscription1, subscription2));
 
@@ -193,7 +193,7 @@ public abstract class AbstractStoreTest {
 
         m_messagesStore.cleanRetained(new Topic("id1/topic"));
 
-        await().until(() -> {
+        await().untilAsserted(() -> {
             Map<Subscription, Collection<Message>> result = m_messagesStore
                     .searchMatching(Arrays.asList(subscription1, subscription2));
 
@@ -211,7 +211,7 @@ public abstract class AbstractStoreTest {
 
         Subscription subscription2 = new Subscription("cid", new Topic("id1"), MqttQoS.AT_MOST_ONCE);
 
-        await().until(() -> {
+        await().untilAsserted(() -> {
             Map<Subscription, Collection<Message>> result = m_messagesStore
                     .searchMatching(Arrays.asList(subscription1, subscription2));
 
@@ -224,7 +224,7 @@ public abstract class AbstractStoreTest {
         });
 
         m_messagesStore.cleanRetained(new Topic("id1"));
-        await().until(() -> {
+        await().untilAsserted(() -> {
             Map<Subscription, Collection<Message>> result = m_messagesStore
                     .searchMatching(Arrays.asList(subscription1, subscription2));
 

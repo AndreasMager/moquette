@@ -25,6 +25,7 @@ import io.moquette.interception.messages.InterceptDisconnectMessage;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.interception.messages.InterceptSubscribeMessage;
 import io.moquette.interception.messages.InterceptUnsubscribeMessage;
+import io.moquette.interception.messages.WipeSubscriptionsMessage;
 import io.moquette.server.ConnectionDescriptor;
 import io.moquette.server.ConnectionDescriptorStore;
 import io.moquette.server.netty.NettyUtils;
@@ -422,7 +423,7 @@ public class ProtocolProcessor {
         }
         if (msg.variableHeader().isCleanSession()) {
             LOG.info("Cleaning session. CId={}", clientId);
-            m_interceptor.notifyWipeSubscriptions(clientId);
+            bus.publish(new WipeSubscriptionsMessage(clientId));
             clientSession.cleanSession();
         }
         return clientSession;
@@ -570,15 +571,20 @@ public class ProtocolProcessor {
     /**
      * Specialized version to publish will testament message.
      */
-    private void forwardPublishWill(WillMessage will, String clientID) {
-        LOG.info("Publishing will message. CId={}, topic={}", clientID, will.getTopic());
-        // it has just to publish the message downstream to the subscribers
-        // NB it's a will publish, it needs a PacketIdentifier for this conn, default to 1
-        IMessagesStore.StoredMessage tobeStored = asStoredMessage(will);
-        tobeStored.setClientID(clientID);
-        Topic topic = new Topic(tobeStored.getTopic());
-        this.messagesPublisher.publish2Subscribers(tobeStored, topic);
-    }
+     private void forwardPublishWill(WillMessage will, String clientID) {
+         LOG.info("Publishing will message. CId={}, topic={}", clientID, will.getTopic());
+         // it has just to publish the message downstream to the subscribers
+         // NB it's a will publish, it needs a PacketIdentifier for this conn, default to 1
+         IMessagesStore.StoredMessage tobeStored = asStoredMessage(will);
+         tobeStored.setClientID(clientID);
+         Topic topic = new Topic(tobeStored.getTopic());
+         this.messagesPublisher.publish2Subscribers(tobeStored, topic);
+
+         //Stores retained message to the topic
+ 	    if(will.isRetained()) {
+ 	    	m_messagesStore.storeRetained(topic, tobeStored);
+ 	    }
+     }
 
     static MqttQoS lowerQosToTheSubscriptionDesired(Subscription sub, MqttQoS qos) {
         if (qos.value() > sub.getRequestedQos().value()) {
@@ -765,7 +771,7 @@ public class ProtocolProcessor {
             subscriptions.removeSubscription(topic, clientID);
             clientSession.unsubscribeFrom(topic);
             String username = NettyUtils.userName(channel);
-            bus.publishSafe(new InterceptUnsubscribeMessage(topic.toString(), clientID, username));
+            bus.publishSafe(new InterceptUnsubscribeMessage(topic, clientID, username));
         }
 
         // ack the client
@@ -815,7 +821,7 @@ public class ProtocolProcessor {
 
         for (Subscription sub : newSubscriptions) {
             //notify the Observables
-            m_interceptor.notifyTopicSubscribed(sub, username);
+            bus.publish(new InterceptSubscribeMessage(sub, username));
         }
 
         boolean success = this.subscriptionInCourse.remove(executionKey, SubscriptionState.STORED);
@@ -913,9 +919,6 @@ public class ProtocolProcessor {
             ClientSession targetSession = m_sessionsStore.sessionForClient(sub.getClientId());
             this.internalRepublisher.publishRetained(targetSession, messages);
         });
-
-        // notify the Observables
-        bus.publish(new InterceptSubscribeMessage(newSubscription, username));
     }
 
     public void notifyChannelWritable(Channel channel) {

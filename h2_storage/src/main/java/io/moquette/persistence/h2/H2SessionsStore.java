@@ -18,6 +18,7 @@ package io.moquette.persistence.h2;
 import io.moquette.persistence.PersistentSession;
 import io.moquette.spi.ClientSession;
 import io.moquette.spi.IMessagesStore;
+import io.moquette.spi.IMessagesStore.Message;
 import io.moquette.spi.IMessagesStore.StoredMessage;
 import io.moquette.spi.ISessionsStore;
 import io.moquette.spi.ISubscriptionsStore;
@@ -39,11 +40,11 @@ public class H2SessionsStore implements ISessionsStore, ISubscriptionsStore {
     private final MVStore mvStore;
     private ConcurrentMap<String, PersistentSession> sessions;
     // maps clientID->[MessageId -> msg]
-    private ConcurrentMap<String, ConcurrentMap<Integer, StoredMessage>> outboundFlightMessages;
+    private ConcurrentMap<String, ConcurrentMap<Integer, Message>> outboundFlightMessages;
     // map clientID <-> set of currently in flight packet identifiers
     private Map<String, Set<Integer>> inFlightIds;
     // maps clientID->[MessageId -> guid]
-    private ConcurrentMap<String, ConcurrentMap<Integer, StoredMessage>> secondPhaseStore;
+    private ConcurrentMap<String, ConcurrentMap<Integer, Message>> secondPhaseStore;
 
     public H2SessionsStore(MVStore mvStore) {
         this.mvStore = mvStore;
@@ -183,14 +184,14 @@ public class H2SessionsStore implements ISessionsStore, ISubscriptionsStore {
     }
 
     @Override
-    public StoredMessage inFlightAck(String clientID, int messageID) {
+    public Message inFlightAck(String clientID, int messageID) {
         LOG.debug("Acknowledging inflight message CId={}, messageId={}", clientID, messageID);
-        ConcurrentMap<Integer, StoredMessage> m = this.outboundFlightMessages.get(clientID);
+        ConcurrentMap<Integer, Message> m = this.outboundFlightMessages.get(clientID);
         if (m == null) {
             LOG.error("Can't find the inFlight record for client <{}>", clientID);
             throw new RuntimeException("Can't find the inFlight record for client <" + clientID + ">");
         }
-        StoredMessage msg = m.remove(messageID);
+        Message msg = m.remove(messageID);
         this.outboundFlightMessages.put(clientID, m);
 
         // remove from the ids store
@@ -202,8 +203,8 @@ public class H2SessionsStore implements ISessionsStore, ISubscriptionsStore {
     }
 
     @Override
-    public void inFlight(String clientID, int messageID, StoredMessage msg) {
-        ConcurrentMap<Integer, IMessagesStore.StoredMessage> messages = this.outboundFlightMessages.get(clientID);
+    public void inFlight(String clientID, int messageID, Message msg) {
+        ConcurrentMap<Integer, IMessagesStore.Message> messages = this.outboundFlightMessages.get(clientID);
         if (messages == null) {
             messages = new ConcurrentHashMap<>();
         }
@@ -241,9 +242,9 @@ public class H2SessionsStore implements ISessionsStore, ISubscriptionsStore {
     }
 
     @Override
-    public void moveInFlightToSecondPhaseAckWaiting(String clientID, int messageID, StoredMessage msg) {
+    public void moveInFlightToSecondPhaseAckWaiting(String clientID, int messageID, Message msg) {
         LOG.debug("Moving inflight message to 2nd phase ack state CId={}, messageID={}", clientID, messageID);
-        ConcurrentMap<Integer, StoredMessage> m = this.secondPhaseStore.get(clientID);
+        ConcurrentMap<Integer, Message> m = this.secondPhaseStore.get(clientID);
         if (m == null) {
             String error = String.format("Can't find the inFlight record for client <%s> during the second phase of " +
                 "QoS2 pub", clientID);
@@ -255,9 +256,9 @@ public class H2SessionsStore implements ISessionsStore, ISubscriptionsStore {
     }
 
     @Override
-    public StoredMessage secondPhaseAcknowledged(String clientID, int messageID) {
+    public Message secondPhaseAcknowledged(String clientID, int messageID) {
         LOG.debug("Processing second phase ACK CId={}, messageId={}", clientID, messageID);
-        final ConcurrentMap<Integer, StoredMessage> m = this.secondPhaseStore.get(clientID);
+        final ConcurrentMap<Integer, Message> m = this.secondPhaseStore.get(clientID);
         if (m == null) {
             String error = String.format("Can't find the inFlight record for client <%s> during the second phase " +
                 "acking of QoS2 pub", clientID);
@@ -265,7 +266,7 @@ public class H2SessionsStore implements ISessionsStore, ISubscriptionsStore {
             throw new RuntimeException(error);
         }
 
-        StoredMessage msg = m.remove(messageID);
+        Message msg = m.remove(messageID);
         this.secondPhaseStore.put(clientID, m);
         return msg;
     }
@@ -273,17 +274,17 @@ public class H2SessionsStore implements ISessionsStore, ISubscriptionsStore {
     @Override
     public int getInflightMessagesNo(String clientID) {
         int totalInflight = 0;
-        ConcurrentMap<Integer, StoredMessage> inflightPerClient = this.mvStore.openMap(inboundStoreForClient(clientID));
+        ConcurrentMap<Integer, Message> inflightPerClient = this.mvStore.openMap(inboundStoreForClient(clientID));
         if (inflightPerClient != null) {
             totalInflight += inflightPerClient.size();
         }
 
-        Map<Integer, StoredMessage> secondPhaseInFlight = this.secondPhaseStore.get(clientID);
+        Map<Integer, Message> secondPhaseInFlight = this.secondPhaseStore.get(clientID);
         if (secondPhaseInFlight != null) {
             totalInflight += secondPhaseInFlight.size();
         }
 
-        Map<Integer, StoredMessage> outboundPerClient = outboundFlightMessages.get(clientID);
+        Map<Integer, Message> outboundPerClient = outboundFlightMessages.get(clientID);
         if (outboundPerClient != null) {
             totalInflight += outboundPerClient.size();
         }
