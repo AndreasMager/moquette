@@ -29,6 +29,7 @@ import io.netty.handler.codec.mqtt.MqttQoS;
 
 public class RxBusTest {
 
+    @SuppressWarnings("CheckReturnValue")
     @Test
     public void test() {
         AtomicBoolean testRun = new AtomicBoolean(false);
