@@ -423,7 +423,7 @@ public class ProtocolProcessor {
         }
         if (msg.variableHeader().isCleanSession()) {
             LOG.info("Cleaning session. CId={}", clientId);
-            bus.publish(new WipeSubscriptionsMessage(clientId));
+            bus.publishSafe(new WipeSubscriptionsMessage(clientId));
             clientSession.cleanSession();
         }
         return clientSession;
