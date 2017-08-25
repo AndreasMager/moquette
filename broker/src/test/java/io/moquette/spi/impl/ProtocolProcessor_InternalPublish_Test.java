@@ -122,6 +122,16 @@ public class ProtocolProcessor_InternalPublish_Test extends AbstractProtocolProc
     }
 
     @Test
+    public void testClientSubscribeAfterRetainedQoS1IsSentGlobalDb() {
+        // Exercise
+        internalPublishToGlobalDB("/topic", AT_LEAST_ONCE, true);
+        subscribe("/topic", AT_LEAST_ONCE);
+
+        // Verify
+        verifyPublishIsNotReceived();
+    }
+
+    @Test
     public void testClientSubscribeBeforeNotRetainedQoS2IsSent() {
         subscribe("/topic", EXACTLY_ONCE);
 
@@ -161,6 +171,16 @@ public class ProtocolProcessor_InternalPublish_Test extends AbstractProtocolProc
 
         // Verify
         verifyPublishIsReceived();
+    }
+
+    @Test
+    public void testClientSubscribeAfterRetainedQoS2IsSentGlobalDb() {
+        // Exercise
+        internalPublishToGlobalDB("/topic", EXACTLY_ONCE, true);
+        subscribe("/topic", EXACTLY_ONCE);
+
+        // Verify
+        verifyPublishIsNotReceived();
     }
 
     @Test

@@ -35,6 +35,7 @@ import static io.netty.handler.codec.mqtt.MqttQoS.AT_LEAST_ONCE;
 import static io.netty.handler.codec.mqtt.MqttQoS.AT_MOST_ONCE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.Assertions.*;
 
 abstract class AbstractProtocolProcessorCommonUtils {
 
@@ -161,6 +162,15 @@ abstract class AbstractProtocolProcessorCommonUtils {
     }
 
     protected void internalPublishTo(String topic, MqttQoS qos, boolean retained) {
+        MqttPublishMessage publish = MqttMessageBuilders.publish()
+            .topicName(topic)
+            .retained(retained)
+            .qos(qos)
+            .payload(Unpooled.copiedBuffer(HELLO_WORLD_MQTT.getBytes())).build();
+        this.m_processor.internalPublish(publish, "INTRPUBL", false);
+    }
+
+    protected void internalPublishToGlobalDB(String topic, MqttQoS qos, boolean retained) {
         MqttPublishMessage publish = MqttMessageBuilders.publish()
             .topicName(topic)
             .retained(retained)
@@ -307,6 +317,11 @@ abstract class AbstractProtocolProcessorCommonUtils {
 
     protected void verifyPublishIsReceived() {
         verifyPublishIsReceived(m_channel);
+    }
+
+    protected void verifyPublishIsNotReceived() {
+        final MqttPublishMessage publishReceived = m_channel.readOutbound();
+        assertThat(publishReceived).isNull();
     }
 
     protected void verifyPublishIsReceived(EmbeddedChannel channel) {
