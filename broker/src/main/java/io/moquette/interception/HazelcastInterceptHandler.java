@@ -24,7 +24,7 @@ import io.moquette.server.Server;
 @Deprecated
 public class HazelcastInterceptHandler extends AbstractInterceptHandler {
 
-    private ITopic<HazelcastMsg> topic;
+    private final ITopic<HazelcastMsg> topic;
 
     public HazelcastInterceptHandler(Server server) {
         super(server);
@@ -34,6 +34,7 @@ public class HazelcastInterceptHandler extends AbstractInterceptHandler {
         topic = hz.getTopic(topicName);
     }
 
+    @Override
     public void onPublish(InterceptPublishMessage msg) {
         HazelcastRXHandler.onPublish(topic, msg);
     }
