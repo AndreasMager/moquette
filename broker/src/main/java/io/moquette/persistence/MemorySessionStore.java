@@ -97,12 +97,13 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
 
     @Override
     public void wipeSubscriptions(String clientID) {
-        if (!sessions.containsKey(clientID)) {
+        Session session = sessions.get(clientID);
+        if (session == null) {
             LOG.error("Can't find the session for client <{}>", clientID);
             return;
         }
 
-        sessions.get(clientID).subscriptions.clear();
+        session.subscriptions.clear();
     }
 
     @Override
