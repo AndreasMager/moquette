@@ -39,6 +39,7 @@ public class HazelcastRXHandler {
 
         String topicName = server.getConfig().getProperty(BrokerConstants.HAZELCAST_TOPIC_NAME) == null
                 ? "moquette": server.getConfig().getProperty(BrokerConstants.HAZELCAST_TOPIC_NAME);
+
         topic = hz.getTopic(topicName);
 
         sub = server.getProcessor().getBus().getEvents()
