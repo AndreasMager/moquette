@@ -729,6 +729,10 @@ public class ProtocolProcessor {
             m_willStore.remove(clientID);
         }
 
+        if (m_sessionsStore.contains(clientID) && m_sessionsStore.sessionForClient(clientID).isCleanSession()) {
+            m_sessionsStore.remove(clientID);
+        }
+
         String username = NettyUtils.userName(channel);
         m_interceptor.notifyClientConnectionLost(clientID, username);
     }
