@@ -17,8 +17,14 @@
 package io.moquette.server;
 
 import io.moquette.interception.AbstractInterceptHandler;
+import io.moquette.interception.messages.InterceptConnectMessage;
+import io.moquette.interception.messages.InterceptConnectionLostMessage;
+import io.moquette.interception.messages.InterceptDisconnectMessage;
+import io.moquette.interception.messages.InterceptPublishMessage;
 import io.moquette.server.config.IConfig;
 import io.moquette.server.config.MemoryConfig;
+import io.reactivex.Observable;
+import io.reactivex.functions.Consumer;
 import org.fusesource.mqtt.client.*;
 import org.junit.After;
 import org.junit.Before;
@@ -70,12 +76,29 @@ public class ServerIntegrationFuseTest {
         m_server.stopServer();
     }
 
+    public <T> Observable<T> observe(Class<T> clazz) {
+        return m_server.getProcessor().getBus()
+            .getEvents()
+            .filter(clazz::isInstance)
+            .cast(clazz);
+    }
+
+    @SuppressWarnings("CheckReturnValue")
+    public <T> Consumer<T> subscribe(Class<T> clazz) {
+        @SuppressWarnings("unchecked")
+        Consumer<T> foo = mock(Consumer.class);
+        observe(clazz).subscribe(foo);
+        return foo;
+    }
+
     @Test
     public void checkWillTestamentIsPublishedOnConnectionKill_noRetain() throws Exception {
         LOG.info("checkWillTestamentIsPublishedOnConnectionKill_noRetain");
 
-        TestInterceptHandler tih = spy(new TestInterceptHandler());
-        m_server.addInterceptHandler(tih);
+        Consumer<InterceptConnectMessage> connect = subscribe(InterceptConnectMessage.class);
+        Consumer<InterceptPublishMessage> publish = subscribe(InterceptPublishMessage.class);
+        Consumer<InterceptConnectionLostMessage> connectionLost = subscribe(InterceptConnectionLostMessage.class);
+        Consumer<InterceptDisconnectMessage> disconnect = subscribe(InterceptDisconnectMessage.class);
 
         String willTestamentTopic = "/will/test";
         String willTestamentMsg = "Bye bye";
@@ -106,10 +129,10 @@ public class ServerIntegrationFuseTest {
         msg.ack();
         assertEquals(willTestamentMsg, new String(msg.getPayload()));
 
-        verify(tih, times(2)).onConnect(any());
-        verify(tih).onPublish(any());
-        verify(tih).onConnectionLost(any());
-        verify(tih, times(0)).onDisconnect(any());
+        verify(connect, times(2)).accept(any());
+        verify(publish).accept(any());
+        verify(connectionLost).accept(any());
+        verify(disconnect, times(0)).accept(any());
     }
 
     class TestInterceptHandler extends AbstractInterceptHandler {
