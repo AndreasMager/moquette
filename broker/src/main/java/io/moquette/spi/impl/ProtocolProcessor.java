@@ -420,7 +420,8 @@ public class ProtocolProcessor {
         ClientSession clientSession = m_sessionsStore.sessionForClient(clientId);
         boolean isSessionAlreadyStored = clientSession != null;
         if (!isSessionAlreadyStored) {
-            clientSession = m_sessionsStore.createNewSession(clientId, msg.variableHeader().isCleanSession());
+            clientSession = m_sessionsStore.createNewSession(clientId, msg.variableHeader().isCleanSession(),
+                    System.currentTimeMillis());
         }
         if (msg.variableHeader().isCleanSession()) {
             LOG.info("Cleaning session. CId={}", clientId);
@@ -747,6 +748,10 @@ public class ProtocolProcessor {
             WillMessage will = m_willStore.get(clientID);
             forwardPublishWill(will, clientID, username);
             m_willStore.remove(clientID);
+        }
+
+        if (m_sessionsStore.contains(clientID) && m_sessionsStore.sessionForClient(clientID).isCleanSession()) {
+            m_sessionsStore.remove(clientID);
         }
 
         bus.publish(new InterceptConnectionLostMessage(clientID, username));

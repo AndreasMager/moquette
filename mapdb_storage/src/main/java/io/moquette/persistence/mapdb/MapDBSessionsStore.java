@@ -144,15 +144,15 @@ class MapDBSessionsStore implements ISessionsStore, ISubscriptionsStore {
     }
 
     @Override
-    public ClientSession createNewSession(String clientID, boolean cleanSession) {
+    public ClientSession createNewSession(String clientID, boolean cleanSession, long now) {
         if (m_persistentSessions.containsKey(clientID)) {
             LOG.error("Unable to create a new session: the client ID is already in use. ClientId={}, cleanSession={}",
                 clientID, cleanSession);
             throw new IllegalArgumentException("Can't create a session with the ID of an already existing" + clientID);
         }
         LOG.debug("Creating new session. CId={}, cleanSession={}", clientID, cleanSession);
-        m_persistentSessions.putIfAbsent(clientID, new PersistentSession(cleanSession));
-        return new ClientSession(clientID, this, this, cleanSession);
+        m_persistentSessions.putIfAbsent(clientID, new PersistentSession(cleanSession, now));
+        return new ClientSession(clientID, this, this, cleanSession, now);
     }
 
     @Override
@@ -164,22 +164,14 @@ class MapDBSessionsStore implements ISessionsStore, ISubscriptionsStore {
         }
 
         PersistentSession storedSession = m_persistentSessions.get(clientID);
-        return new ClientSession(clientID, this, this, storedSession.cleanSession);
-    }
-
-    @Override
-    public Collection<ClientSession> getAllSessions() {
-        Collection<ClientSession> result = new ArrayList<>();
-        for (Map.Entry<String, PersistentSession> entry : m_persistentSessions.entrySet()) {
-            result.add(new ClientSession(entry.getKey(), this, this, entry.getValue().cleanSession));
-        }
-        return result;
+        return new ClientSession(clientID, this, this, storedSession.cleanSession, storedSession.lastContatct);
     }
 
     @Override
     public void updateCleanStatus(String clientID, boolean cleanSession) {
         LOG.info("Updating cleanSession flag. CId={}, cleanSession={}", clientID, cleanSession);
-        m_persistentSessions.put(clientID, new PersistentSession(cleanSession));
+        PersistentSession storedSession = m_persistentSessions.get(clientID);
+        m_persistentSessions.put(clientID, new PersistentSession(cleanSession, storedSession.lastContatct));
     }
 
     /**
@@ -339,5 +331,23 @@ class MapDBSessionsStore implements ISessionsStore, ISubscriptionsStore {
 
     static String inboundMessageId2MessagesMapName(String clientID) {
         return "inboundInflight_" + clientID;
+    }
+
+    @Override
+    public Set<String> getClientIDs() {
+        return m_persistentSessions.keySet();
+    }
+
+    @Override
+    public void remove(String clientID) {
+        cleanSession(clientID);
+        m_persistentSessions.remove(clientID);
+    }
+
+    @Override
+    public void updateValidity(String clientID, long now) {
+        PersistentSession storedSession = m_persistentSessions.get(clientID);
+        boolean cleanSession = storedSession == null ? true : storedSession.cleanSession;
+        m_persistentSessions.put(clientID, new PersistentSession(cleanSession, now));
     }
 }

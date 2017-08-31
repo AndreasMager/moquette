@@ -51,7 +51,7 @@ public abstract class AbstractStoreTest extends MessageStoreTCK {
 
     @Test
     public void overridingSubscriptions() {
-        ClientSession session1 = sessionsStore.createNewSession("SESSION_ID_1", true);
+        ClientSession session1 = sessionsStore.createNewSession("SESSION_ID_1", true, 0);
 
         // Subscribe on /topic with QOSType.MOST_ONE
         Subscription oldSubscription = new Subscription(session1.clientID, new Topic("/topic"), MqttQoS.AT_MOST_ONCE);
@@ -79,7 +79,7 @@ public abstract class AbstractStoreTest extends MessageStoreTCK {
 
     @Test
     public void testNextPacketID_existingClientSession() {
-        sessionsStore.createNewSession("CLIENT", true);
+        sessionsStore.createNewSession("CLIENT", true, 0);
 
         // Force creation of inflight map for the CLIENT session
         int packetId = sessionsStore.nextPacketID("CLIENT");
@@ -92,7 +92,7 @@ public abstract class AbstractStoreTest extends MessageStoreTCK {
 
     @Test
     public void testNextPacketID() {
-        sessionsStore.createNewSession("CLIENT", true);
+        sessionsStore.createNewSession("CLIENT", true, 0);
         // request a first ID
 
         IMessagesStore.StoredMessage publishToStore = new IMessagesStore.StoredMessage(
@@ -116,7 +116,7 @@ public abstract class AbstractStoreTest extends MessageStoreTCK {
 
     @Test
     public void testDropMessagesInSessionDoesntCleanAnyRetainedStoredMessages() {
-        sessionsStore.createNewSession(TEST_CLIENT, true);
+        sessionsStore.createNewSession(TEST_CLIENT, true, 0);
 
         List<Subscription> matcher = Arrays.asList(new Subscription("", new Topic("id1/topic"), MqttQoS.AT_LEAST_ONCE));
 
@@ -213,7 +213,7 @@ public abstract class AbstractStoreTest extends MessageStoreTCK {
     public void checkSessions() {
         String id = "TestClient2";
 
-        ClientSession s = sessionsStore.createNewSession(id, true);
+        ClientSession s = sessionsStore.createNewSession(id, true, 0);
 
         assertThat(sessionsStore.getAllSessions()).doesNotContain(s);
 
@@ -231,7 +231,7 @@ public abstract class AbstractStoreTest extends MessageStoreTCK {
         String id = "TestClient3";
         Topic t = new Topic("id1/#");
 
-        sessionsStore.createNewSession(id, true);
+        sessionsStore.createNewSession(id, true, 0);
 
         Subscription subscription1 = new Subscription(id, t, MqttQoS.AT_MOST_ONCE);
 
@@ -251,7 +251,7 @@ public abstract class AbstractStoreTest extends MessageStoreTCK {
         String id = "TestClient33";
         Topic t = new Topic("id1/#");
 
-        sessionsStore.createNewSession(id, true);
+        sessionsStore.createNewSession(id, true, 0);
 
         Subscription subscription1 = new Subscription(id, t, MqttQoS.AT_MOST_ONCE);
 
@@ -270,7 +270,7 @@ public abstract class AbstractStoreTest extends MessageStoreTCK {
     public void queue() {
         String id = "TestClient3";
 
-        sessionsStore.createNewSession(id, true);
+        sessionsStore.createNewSession(id, true, 0);
 
         Queue<StoredMessage> queue = sessionsStore.queue(id);
         queue.add(publishToStore);
@@ -289,7 +289,7 @@ public abstract class AbstractStoreTest extends MessageStoreTCK {
     public void inFlight() {
         String id = "clientId";
 
-        sessionsStore.createNewSession(id, true);
+        sessionsStore.createNewSession(id, true, 0);
 
         IMessagesStore.StoredMessage publishToStore = new IMessagesStore.StoredMessage(
                 "Hello".getBytes(),
@@ -332,7 +332,7 @@ public abstract class AbstractStoreTest extends MessageStoreTCK {
 
         int messageID = sessionsStore.nextPacketID(id);
 
-        sessionsStore.createNewSession(id, true);
+        sessionsStore.createNewSession(id, true, 0);
 
         sessionsStore.inFlight(id, messageID, publishToStore);
         sessionsStore.inFlightAck(id, messageID);
@@ -353,7 +353,7 @@ public abstract class AbstractStoreTest extends MessageStoreTCK {
 
         int messageID = sessionsStore.nextPacketID(id);
 
-        sessionsStore.createNewSession(id, true);
+        sessionsStore.createNewSession(id, true, 0);
 
         sessionsStore.inFlight(id, messageID, publishToStore);
 

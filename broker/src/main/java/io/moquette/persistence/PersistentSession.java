@@ -25,8 +25,10 @@ public class PersistentSession implements Serializable {
 
     private static final long serialVersionUID = 5052054783220481854L;
     public final boolean cleanSession;
+    public final long lastContatct;
 
-    public PersistentSession(boolean cleanSession) {
+    public PersistentSession(boolean cleanSession, long now) {
         this.cleanSession = cleanSession;
+        this.lastContatct = now;
     }
 }

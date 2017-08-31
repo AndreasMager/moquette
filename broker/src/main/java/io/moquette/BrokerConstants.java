@@ -69,6 +69,9 @@ public final class BrokerConstants {
     public static final String STORAGE_CLASS_NAME = "storage_class";
     public static final String STORAGE_CLASS_TYPE = "storage_type_global";
 
+    public static final String STORAGE_CLASS_MAX_SESSIONS = "storage_class.max_sessions";
+    public static final String STORAGE_CLASS_SESSION_EXPIRE = "storage_class.session_expire";
+
     private BrokerConstants() {
     }
 }

@@ -67,7 +67,10 @@ public class H2SessionsStore implements ISessionsStore, ISubscriptionsStore {
     @Override
     public void updateCleanStatus(String clientID, boolean cleanSession) {
         LOG.info("Updating cleanSession flag. CId={}, cleanSession={}", clientID, cleanSession);
-        this.sessions.put(clientID, new PersistentSession(cleanSession));
+        PersistentSession old = this.sessions.get(clientID);
+        long lastContact = old == null ? 0 : old.lastContatct;
+
+        this.sessions.put(clientID, new PersistentSession(cleanSession, lastContact));
     }
 
     @Override
@@ -152,15 +155,15 @@ public class H2SessionsStore implements ISessionsStore, ISubscriptionsStore {
     }
 
     @Override
-    public ClientSession createNewSession(String clientID, boolean cleanSession) {
+    public ClientSession createNewSession(String clientID, boolean cleanSession, long now) {
         if (sessions.containsKey(clientID)) {
             LOG.error("Unable to create a new session: the client ID is already in use. CId={}, cleanSession={}",
                 clientID, cleanSession);
             throw new IllegalArgumentException("Can't create a session with the ID of an already existing" + clientID);
         }
         LOG.debug("Creating new session. CId={}, cleanSession={}", clientID, cleanSession);
-        sessions.putIfAbsent(clientID, new PersistentSession(cleanSession));
-        return new ClientSession(clientID, this, this, cleanSession);
+        sessions.putIfAbsent(clientID, new PersistentSession(cleanSession, now));
+        return new ClientSession(clientID, this, this, cleanSession, now);
     }
 
     @Override
@@ -171,16 +174,7 @@ public class H2SessionsStore implements ISessionsStore, ISubscriptionsStore {
             return null;
         }
         PersistentSession storedSession = this.sessions.get(clientID);
-        return new ClientSession(clientID, this, this, storedSession.cleanSession);
-    }
-
-    @Override
-    public Collection<ClientSession> getAllSessions() {
-        Collection<ClientSession> result = new ArrayList<>();
-        for (Map.Entry<String, PersistentSession> entry : this.sessions.entrySet()) {
-            result.add(new ClientSession(entry.getKey(), this, this, entry.getValue().cleanSession));
-        }
-        return result;
+        return new ClientSession(clientID, this, this, storedSession.cleanSession, storedSession.lastContatct);
     }
 
     @Override
@@ -337,4 +331,21 @@ public class H2SessionsStore implements ISessionsStore, ISubscriptionsStore {
         dropQueue(clientID);
     }
 
+    @Override
+    public Set<String> getClientIDs() {
+        return sessions.keySet();
+    }
+
+    @Override
+    public void updateValidity(String clientID, long now) {
+        PersistentSession old = this.sessions.get(clientID);
+        boolean cleanSession = old == null ? true : old.cleanSession;
+        sessions.put(clientID, new PersistentSession(cleanSession, now));
+    }
+
+    @Override
+    public void remove(String clientID) {
+        cleanSession(clientID);
+        sessions.remove(clientID);
+    }
 }
