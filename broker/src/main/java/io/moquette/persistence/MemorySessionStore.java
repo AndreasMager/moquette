@@ -143,7 +143,7 @@ public class MemorySessionStore implements ISessionsStore, ISubscriptionsStore {
     @Override
     public ClientSession sessionForClient(String clientID) {
         if (!sessions.containsKey(clientID)) {
-            LOG.error("Can't find the session for client <{}>", clientID);
+            LOG.debug("Can't find the session for client <{}>", clientID);
             return null;
         }
 
