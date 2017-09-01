@@ -20,7 +20,7 @@ import java.util.stream.IntStream;
 import org.apache.commons.codec.binary.Hex;
 import io.netty.buffer.ByteBuf;
 
-final class DebugUtils {
+public final class DebugUtils {
 
     public static boolean isNotPrintableAscii(byte value) {
         return value < 32;
