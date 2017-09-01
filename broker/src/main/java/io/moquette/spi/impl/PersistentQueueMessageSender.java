@@ -36,7 +36,7 @@ class PersistentQueueMessageSender {
 
     void sendPublish(ClientSession clientsession, MqttPublishMessage pubMessage) {
         String clientId = clientsession.clientID;
-        final int messageId = pubMessage.variableHeader().messageId();
+        final int messageId = pubMessage.variableHeader().packetId();
         final String topicName = pubMessage.variableHeader().topicName();
         MqttQoS qos = pubMessage.fixedHeader().qosLevel();
         if (LOG.isDebugEnabled()) {
@@ -54,8 +54,8 @@ class PersistentQueueMessageSender {
                     + "qos={}, cleanSession={}", messageId, clientId, topicName, qos, false);
                 clientsession.enqueue(asStoredMessage(pubMessage));
             } else {
-                LOG.warn("PUBLISH message could not be delivered. It will be discarded. MessageId={}, CId={}, topic={}, " +
-                    "qos={}, cleanSession={}", messageId, clientId, topicName, qos, true);
+                LOG.warn("PUBLISH message could not be delivered. It will be discarded. MessageId={}, CId={}, "
+                        + "topic={}, qos={}, cleanSession={}", messageId, clientId, topicName, qos, true);
             }
         }
     }
