@@ -16,12 +16,38 @@
 
 package io.moquette.spi.impl;
 
+import java.util.stream.IntStream;
+import org.apache.commons.codec.binary.Hex;
 import io.netty.buffer.ByteBuf;
 
 final class DebugUtils {
 
-    static String payload2Str(ByteBuf content) {
-        return new String(content.copy().array());
+    public static boolean isNotPrintableAscii(byte value) {
+        return value < 32;
+    }
+
+    public static boolean isNotPrintableAscii(int value) {
+        return value < 32;
+    }
+
+    public static IntStream intStream(byte[] array) {
+        return IntStream.range(0, array.length).map(idx -> array[idx]);
+    }
+
+    public static String payload2Str(ByteBuf content) {
+        return payload2Str(content.copy().array());
+    }
+
+    public static String payload2Str(byte[] content) {
+        boolean notPrintAble = intStream(content)
+            .filter(DebugUtils::isNotPrintableAscii)
+            .findAny()
+            .isPresent();
+
+        if (notPrintAble)
+            return "0x" + Hex.encodeHexString(content);
+
+        return new String(content);
     }
 
     private DebugUtils() {
